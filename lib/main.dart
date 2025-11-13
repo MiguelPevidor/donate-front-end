@@ -1,5 +1,6 @@
 import 'package:donate/view/CadastroUsuarioPage.dart';
 import 'package:donate/view/LoginPage.dart';
+import 'package:donate/view/MapaPage.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -23,7 +24,8 @@ class MyApp extends StatelessWidget {
       initialRoute: "/",
       routes: {
         '/': (context) => const LoginPage(), // Sua tela inicial
-        '/cadastroUsuario': (context) => const CadastroUsuarioPage(), // Rota de cadastro
+        '/cadastroUsuario': (context) => const CadastroUsuarioPage(),
+        '/homePage': (context) => const MapaPage(),// homePage
       },
       // home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
