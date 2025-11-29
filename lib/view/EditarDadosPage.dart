@@ -38,7 +38,6 @@ class _EditarDadosPageState extends State<EditarDadosPage> {
             ),
             SizedBox(height: 20),
 
-            // CORRIGIDO: Usando labelText para compatibilidade com seu MyTextField
             MyTextField(
               controller: _nomeController,
               labelText: 'Nome Completo', 

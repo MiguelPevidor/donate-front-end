@@ -1,93 +1,88 @@
-import 'dart:async';
-import 'dart:io';
-import 'package:donate/util/GeradorBitmapDescriptor.dart';
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
+import '../model/PontoDeColeta.dart';
+import '../util/GeradorBitmapDescriptor.dart'; 
 
-import '../model/Instituicao.dart';
-import '../util/GerenciadoraArquivo.dart';
-import '../util/localizador.dart';
+class MapaController extends ChangeNotifier {
+  // Configurado para Chrome/Web na porta 5020
+  final String baseUrl = 'http://localhost:5020'; 
 
-class MapaController{
-  late List<Instituicao> instituicoes;
-  Set<Marker>? markers;
-  GoogleMapController? mapController;
+  late GoogleMapController mapController;
+  Set<Marker>? markers = {};
+  List<PontoDeColeta> pontos = [];
+  
+  final LatLng _posicaoInicial = const LatLng(-19.5393, -40.6305);
 
-  Marker? marker_atual;
-  int posicao_marker_atual = -1;
+  LatLng obterPosicaoInicial() => _posicaoInicial;
 
-  MapaController();
-
-  Future<List<Instituicao>> buscarInstituicoes() async{
-    //consultar api
-
-    // retorna uma lista vazia por enquanto
-    instituicoes = <Instituicao> [];
-    return instituicoes;
-
+  void inicializarPosicaoAtual() {
+    notifyListeners();
   }
 
+  Future<void> buscarPontosDeColeta() async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/pontos-de-coleta/listar-todos');
+      final response = await http.get(uri);
 
-  inicializarPosicaoAtual(){
-    if(posicao_marker_atual == -1 && markers!.length > 0){
-      posicao_marker_atual = 0;
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+        pontos = data.map((json) => PontoDeColeta.fromJson(json)).toList();
+        notifyListeners();
+      } else {
+        print('Erro API: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Erro Conexão: $e');
     }
   }
 
-  LatLng obterPosicaoInicial() {
-    return posicao_marker_atual == -1
-    // Centro de Colatina
-        ? LatLng(-19.5167339, -40.722392)
-        : markers!.elementAt(0).position;
-  }
-
-  void avancarProximoMarker() {
-    if(posicao_marker_atual == (markers!.length-1)){
-      posicao_marker_atual = 0;
-    } else {
-      posicao_marker_atual++;
-    }
-    final LatLng latlng = markers!.elementAt(posicao_marker_atual).position;
-    mapController!.moveCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: latlng,
-          zoom: 17.0,
-        ),
-      ),
-    );
-  }
-
-  Future<BitmapDescriptor> obterBitmapDescriptor(String? foto) async {
-    if (foto == null || foto == "") {
-      return await GeradorBitmapDescriptor.gerarBitMapDescriptorFromAsset(
-          'assets/icon/imagem_mapa.png', 100);
-    } else {
-      File file = await GerenciadoraArquivo.obterImagem(foto);
-      return await GeradorBitmapDescriptor.gerarBitMapDescriptorFromFile(
-          file, 100);
-    }
-  }
-
+  // --- AQUI ESTÁ A MUDANÇA ---
   Future<List<Marker>> obterMarkers() async {
-    List<Marker> markers = <Marker>[];
-    for (Instituicao instituicao in instituicoes) {
-      LatLng? latLng =
-      await Localizador.obterLatitudeLongitudePorEndereco(instituicao.endereco!);
-      if (latLng != null) {
-        BitmapDescriptor userIcon =
-        await obterBitmapDescriptor(instituicao.urlFoto);
-        Marker marker = Marker(
-          markerId: MarkerId(instituicao.id.toString()),
-          position: latLng,
-          icon: userIcon,
+    Set<Marker> novosMarkers = {};
+    
+    BitmapDescriptor icone;
+    try {
+       // REDUZI O TAMANHO DE 100.0 PARA 45.0
+       icone = await GeradorBitmapDescriptor.gerarIcone(
+         Icons.location_on, 
+         Colors.green, 
+         size: 45.0 
+       );
+    } catch (e) {
+       icone = BitmapDescriptor.defaultMarker;
+    }
+
+    for (var ponto in pontos) {
+      if (ponto.latitude != 0.0 && ponto.longitude != 0.0) {
+        final marker = Marker(
+          markerId: MarkerId(ponto.id),
+          position: LatLng(ponto.latitude, ponto.longitude),
+          icon: icone, 
           infoWindow: InfoWindow(
-            title: instituicao.nome,
-            snippet: instituicao.endereco,
+            snippet: ponto.horarioFuncionamento,
           ),
         );
-        markers.add(marker);
+        novosMarkers.add(marker);
       }
     }
-    return markers;
+
+    markers = novosMarkers;
+    notifyListeners();
+    return markers!.toList();
+  }
+  
+  int _indexAtual = 0;
+  void avancarProximoMarker() {
+    if (pontos.isEmpty) return;
+    if (_indexAtual >= pontos.length) _indexAtual = 0;
+    
+    final ponto = pontos[_indexAtual];
+    mapController.animateCamera(
+      CameraUpdate.newLatLngZoom(LatLng(ponto.latitude, ponto.longitude), 16),
+    );
+    mapController.showMarkerInfoWindow(MarkerId(ponto.id));
+    _indexAtual++;
   }
 }
