@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../view/EditarDadosPage.dart'; // Certifique-se de criar essa tela depois
+import '../view/EditarDadosPage.dart'; // Importação da tela de edição
 
 class MenuLateral extends StatelessWidget {
   @override
@@ -8,6 +8,7 @@ class MenuLateral extends StatelessWidget {
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
+          // Cabeçalho do Menu (Dados do Usuário Mockados por enquanto)
           UserAccountsDrawerHeader(
             accountName: Text("Usuário Teste"),
             accountEmail: Text("teste@donate.com"),
@@ -17,24 +18,27 @@ class MenuLateral extends StatelessWidget {
             ),
             decoration: BoxDecoration(color: Colors.blue),
           ),
+          
+          // Item de Menu: Editar Dados
           ListTile(
             leading: Icon(Icons.edit),
             title: Text('Gerenciar meus dados'),
             onTap: () {
               Navigator.pop(context); // Fecha o menu
-              // Navega para a tela de edição (crie este arquivo depois)
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => EditarDadosPage()),
               );
             },
           ),
+          
+          // Item de Menu: Sair
           ListTile(
             leading: Icon(Icons.exit_to_app, color: Colors.red),
             title: Text('Sair', style: TextStyle(color: Colors.red)),
             onTap: () {
               Navigator.pop(context);
-              // Implementar logout aqui
+              // Adicione sua lógica de logout aqui futuramente
             },
           ),
         ],

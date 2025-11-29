@@ -1,12 +1,9 @@
 import 'dart:async';
-import 'package:donate/components/menuLateral.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-// Importe seu controller e componentes
 import '../controllers/MapaController.dart';
-// import 'package:donate/model/Instituicao.dart'; // Se necessário
-
+import '../components/menuLateral.dart';
 class MapaPage extends StatefulWidget {
   const MapaPage({Key? key}) : super(key: key);
 
@@ -18,7 +15,7 @@ class _MapaPageState extends State<MapaPage> {
   late MapaController _controle;
   late Future<List<Marker>> future;
   
-  // CRUCIAL: A chave para controlar o Scaffold programaticamente
+  // Chave para controlar o Scaffold (abrir o drawer via botão flutuante)
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -41,36 +38,26 @@ class _MapaPageState extends State<MapaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Atribuímos a chave aqui
-      key: _scaffoldKey, 
-      
-      // Adicionamos o Drawer que criamos
-      drawer: MenuLateral(),
+      key: _scaffoldKey, // Necessário para o botão flutuante funcionar
+      drawer: MenuLateral(), // O seu menu lateral novo
       
       appBar: AppBar(
         title: const Text('Mapa de Usuários'),
-        // Se quiser remover o ícone padrão do menu da AppBar para usar só o flutuante:
-        // automaticallyImplyLeading: false, 
+        // automaticallyImplyLeading: false, // Descomente se quiser sumir com o ícone padrão da AppBar
       ),
       body: _body(),
     );
   }
 
-  Widget _body() {
+  _body() {
     return FutureBuilder<List<Marker>>(
       future: future,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text("Erro ao carregar mapa."));
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-             // Tratamento caso não venha dados, inicia vazio ou mostra msg
-             _controle.markers = {};
-             _controle.inicializarPosicaoAtual();
-             return _conteudo();
+        if (!snapshot.hasData) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
         }
-
         _controle.markers = snapshot.data!.toSet();
         _controle.inicializarPosicaoAtual();
         return _conteudo();
@@ -82,43 +69,44 @@ class _MapaPageState extends State<MapaPage> {
     _controle.mapController = controller;
   }
 
-  Widget _conteudo() {
+  _conteudo() {
     return Stack(
       children: <Widget>[
-        // 1. O Mapa (Camada de fundo)
-        GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: _controle.obterPosicaoInicial(),
-            zoom: 17,
+        // Camada 1: O Mapa
+        Container(
+          child: GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: _controle.obterPosicaoInicial(),
+              zoom: 17,
+            ),
+            markers: _controle.markers!,
+            onMapCreated: _onMapCreated,
+            zoomControlsEnabled: false, // Oculta zoom padrão para limpar a tela
           ),
-          markers: _controle.markers!,
-          onMapCreated: _onMapCreated,
-          myLocationEnabled: true, // Habilita o ponto azul da localização atual
-          zoomControlsEnabled: false, // Remove botões de zoom padrão para limpar a tela
         ),
 
-        // 2. Botão Flutuante do Menu (Canto Superior Esquerdo)
+        // Camada 2: Botão do Menu Lateral (Topo Esquerdo)
         Positioned(
-          top: 20, 
+          top: 20,
           left: 20,
           child: FloatingActionButton(
-            heroTag: "btnMenu", // Importante se tiver mais de um FAB na tela
+            heroTag: "btnMenu", // Tag única
             backgroundColor: Colors.white,
             foregroundColor: Colors.black,
             child: Icon(Icons.menu),
             onPressed: () {
-              // AQUI ESTÁ O SEGREDO: Abre o drawer usando a chave
+              // Abre o menu lateral
               _scaffoldKey.currentState?.openDrawer();
             },
           ),
         ),
 
-        // 3. Botão "Próximo" (Canto Inferior Direito ou Centro-Baixo)
-        Positioned(
-          bottom: 20,
-          right: 20, // Mudei para a direita (padrão Material Design)
+        // Camada 3: Botão Próximo (Inferior)
+        Container(
+          alignment: Alignment.bottomCenter,
+          padding: EdgeInsets.only(bottom: 20),
           child: FloatingActionButton(
-            heroTag: "btnNext",
+            heroTag: "btnNext", // Tag única
             child: Icon(Icons.navigate_next),
             onPressed: () {
               _controle.avancarProximoMarker();

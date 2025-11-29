@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../components/MyTextField.dart'; // Verifique se o caminho está correto
+import '../components/MyTextField.dart'; 
 
 class EditarDadosPage extends StatefulWidget {
   @override
@@ -7,18 +7,14 @@ class EditarDadosPage extends StatefulWidget {
 }
 
 class _EditarDadosPageState extends State<EditarDadosPage> {
-  // Controladores para os campos
   final _nomeController = TextEditingController();
   final _emailController = TextEditingController();
   final _telefoneController = TextEditingController();
-  
-  // Exemplo de campo específico (CPF ou CNPJ)
-  final _documentoController = TextEditingController(); 
 
   @override
   void initState() {
     super.initState();
-    // AQUI: No futuro, você preenche os controllers com os dados do usuário logado
+    // Dados simulados
     _nomeController.text = "Fulano de Tal";
     _emailController.text = "fulano@teste.com";
   }
@@ -33,58 +29,41 @@ class _EditarDadosPageState extends State<EditarDadosPage> {
         padding: EdgeInsets.all(16),
         child: Column(
           children: [
-            // Foto do usuário (opcional para editar)
             Center(
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.grey[300],
-                    child: Icon(Icons.person, size: 50, color: Colors.grey[600]),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: CircleAvatar(
-                      backgroundColor: Colors.blue,
-                      radius: 18,
-                      child: Icon(Icons.camera_alt, size: 18, color: Colors.white),
-                    ),
-                  ),
-                ],
+              child: CircleAvatar(
+                radius: 50,
+                backgroundColor: Colors.grey[300],
+                child: Icon(Icons.person, size: 50, color: Colors.grey[600]),
               ),
             ),
             SizedBox(height: 20),
 
-            // Campos de Texto (Usando seu componente)
-            // Adapte os parâmetros conforme seu MyTextField espera (label, hint, controller, etc)
+            // CORRIGIDO: Usando labelText para compatibilidade com seu MyTextField
             MyTextField(
               controller: _nomeController,
-              hintText: 'Nome Completo',
+              labelText: 'Nome Completo', 
               obscureText: false,
             ),
-            SizedBox(height: 10),
             
             MyTextField(
               controller: _emailController,
-              hintText: 'E-mail',
+              labelText: 'E-mail',
               obscureText: false,
             ),
-             SizedBox(height: 10),
 
             MyTextField(
               controller: _telefoneController,
-              hintText: 'Telefone',
+              labelText: 'Telefone',
               obscureText: false,
             ),
-             SizedBox(height: 10),
             
-            // Botão de Salvar
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Lógica para enviar o PUT para o Spring Boot
-                _salvarDados();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Dados salvos com sucesso!')),
+                );
+                Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
                 minimumSize: Size(double.infinity, 50),
@@ -95,13 +74,5 @@ class _EditarDadosPageState extends State<EditarDadosPage> {
         ),
       ),
     );
-  }
-
-  void _salvarDados() {
-    // Aqui você chamará seu Controller/Service futuramente
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Dados atualizados com sucesso! (Simulação)')),
-    );
-    Navigator.pop(context); // Volta para o mapa
   }
 }
