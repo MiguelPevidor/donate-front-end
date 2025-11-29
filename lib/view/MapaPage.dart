@@ -1,77 +1,58 @@
 import 'dart:async';
-import 'package:donate/model/Instituicao.dart';
+import 'package:donate/components/menuLateral.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../controllers/MapaController.dart';
 
 class MapaPage extends StatefulWidget {
-
-
-
+  const MapaPage({Key? key}) : super(key: key);
 
   @override
   _MapaPageState createState() => _MapaPageState();
-
-  const MapaPage();
 }
 
 class _MapaPageState extends State<MapaPage> {
   late MapaController _controle;
   late Future<List<Marker>> future;
+  
+  // Chave Global para abrir o Drawer via código
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
     _controle = MapaController();
-    future = _carregarDadosEProcessarMarkers();
+    future = _carregarDados();
   }
 
-  Future<List<Marker>> _carregarDadosEProcessarMarkers() async {
-    try {
-      //    ESPERA (await) o controller buscar os dados da API primeiro.
-      //    (Assumindo que seu controller foi atualizado para
-      //     armazenar a lista 'instituicoes' internamente).
-      await _controle.buscarInstituicoes();
-
-      //    SÓ DEPOIS que a API retornou, ele chama o 'obterMarkers'
-      //    (que faz o geocoding) e retorna a lista final de markers.
-      return _controle.obterMarkers();
-
-    } catch (e) {
-      // Lidar com erros de API ou Geocoding
-      print("Erro ao carregar dados: $e");
-      // Lança o erro para o FutureBuilder poder exibi-lo
-      throw Exception('Falha ao carregar marcadores: $e');
-    }
+  Future<List<Marker>> _carregarDados() async {
+    await _controle.buscarPontosDeColeta(); // Busca na API
+    return _controle.obterMarkers(); // Cria os pinos
   }
-
-
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mapa de Usuários'),
+      key: _scaffoldKey, // Vincula a chave ao Scaffold
+      drawer: MenuLateral(), // Seu menu lateral
+      extendBodyBehindAppBar: true, // Permite que o mapa fique atrás da barra de status
+      
+      body: FutureBuilder<List<Marker>>(
+        future: future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+          
+          // Atualiza markers no controller se vieram dados
+          if (snapshot.hasData) {
+             _controle.markers = snapshot.data!.toSet();
+          }
+          
+          return _conteudoMapa();
+        },
       ),
-      body: _body(),
-    );
-  }
-
-  _body() {
-    return FutureBuilder<List<Marker>>(
-      future: future,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-        _controle.markers = snapshot.data!.toSet();
-        _controle.inicializarPosicaoAtual();
-        return _conteudo();
-      },
     );
   }
 
@@ -79,23 +60,44 @@ class _MapaPageState extends State<MapaPage> {
     _controle.mapController = controller;
   }
 
-  _conteudo() {
+  Widget _conteudoMapa() {
     return Stack(
       children: <Widget>[
-        Container(
-          child: GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _controle.obterPosicaoInicial(),
-              zoom: 17,
-            ),
-            markers: _controle.markers!,
-            onMapCreated: _onMapCreated,
+        // CAMADA 1: O Mapa
+        GoogleMap(
+          initialCameraPosition: CameraPosition(
+            target: _controle.obterPosicaoInicial(),
+            zoom: 15,
+          ),
+          markers: _controle.markers ?? {},
+          onMapCreated: _onMapCreated,
+          zoomControlsEnabled: false, // Mapa limpo
+          myLocationEnabled: true,    // Mostra onde estou
+          myLocationButtonEnabled: false,
+        ),
+
+        // CAMADA 2: Botão Menu (Topo Esquerdo)
+        Positioned(
+          top: 50, // Margem superior para não ficar sob o relógio
+          left: 20,
+          child: FloatingActionButton(
+            heroTag: "btnMenu",
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            child: Icon(Icons.menu),
+            onPressed: () {
+              // Abre o menu lateral
+              _scaffoldKey.currentState?.openDrawer();
+            },
           ),
         ),
-        Container(
-          alignment: Alignment.bottomCenter,
-          padding: EdgeInsets.only(bottom: 20),
+
+        // CAMADA 3: Botão Próximo (Inferior Direito)
+        Positioned(
+          bottom: 20,
+          right: 20,
           child: FloatingActionButton(
+            heroTag: "btnNext",
             child: Icon(Icons.navigate_next),
             onPressed: () {
               _controle.avancarProximoMarker();
