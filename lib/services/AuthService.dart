@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:donate/util/Constants.dart';
 
 class AuthService {
   // Substitua pelo seu IP local se estiver no emulador (ex: 10.0.2.2 para Android)
   // Se for Spring Boot rodando local: http://10.0.2.2:8080/api/auth/login
-  final String _baseUrl = "http://localhost:5020/api"; 
 
   Future<Map<String, dynamic>> login(String login, String senha) async {
-    final url = Uri.parse('$_baseUrl/login');
+    final url = Uri.parse('${Constants.baseUrl}/login');
     
     try {
       final response = await http.post(
@@ -28,6 +28,7 @@ class AuthService {
         throw Exception("Erro no servidor. Tente novamente.");
       }
     } catch (e) {
+      print(e.toString());
       rethrow; // Passa o erro para o Controller tratar
     }
   }

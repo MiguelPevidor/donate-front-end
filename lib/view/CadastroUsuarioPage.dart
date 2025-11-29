@@ -1,5 +1,8 @@
 import 'package:donate/components/MyTextField.dart';
+import 'package:donate/model/Doador.dart';
+import 'package:donate/model/Instituicao.dart';
 import 'package:flutter/material.dart';
+import 'package:donate/controllers/CadastrarUsuarioController.dart';
 
 // 1. (Opcional, mas recomendado) Crie um enum para os tipos de usuário.
 // É mais seguro e limpo do que usar Strings.
@@ -15,6 +18,9 @@ class CadastroUsuarioPage extends StatefulWidget {
 class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
   // Variável de estado para "lembrar" a seleção atual.
   UserType _selectedUserType = UserType.doador;
+
+  // Instância do controller de cadastro
+  final CadastrarUsuarioController _controller = CadastrarUsuarioController();
 
   // Controladores para os campos de texto
   final _loginController = TextEditingController();
@@ -174,14 +180,7 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
   Widget _buildRegisterButton() {
     return ElevatedButton(
       onPressed: () {
-        // Lógica para salvar
-        if (_selectedUserType == UserType.doador) {
-          print("Salvando Doador: ${_nomeController.text}");
-          // Aqui você chamaria sua API de backend para Doador
-        } else {
-          print("Salvando Instituição: ${_nomeInstituicaoController.text}");
-          // Aqui você chamaria sua API de backend para Instituição
-        }
+        _cadastrar();
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blue[700],
@@ -193,5 +192,37 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
         style: TextStyle(fontSize: 18),
       ),
     );
+  }
+
+  void _cadastrar() {
+    if (_selectedUserType == UserType.doador) {
+      // 1. Cria o objeto Doador com os dados dos controllers
+      final doador = Doador(
+        nome: _nomeController.text,
+        cpf: _cpfController.text,
+        telefone: _telefoneController.text,
+        email: _emailController.text,
+        login: _loginController.text,
+        senha: _senhaController.text,
+      );
+      
+      // 2. Chama o controller passando o objeto
+      _controller.cadastrarDoador(context, doador);
+
+    } else {
+      // 1. Cria o objeto Instituição
+      final instituicao = Instituicao(
+        nomeInstituicao: _nomeInstituicaoController.text,
+        missao: _missaoController.text,
+        cnpj: _cnpjController.text,
+        telefone: _telefoneController.text,
+        email: _emailController.text,
+        login: _loginController.text,
+        senha: _senhaController.text,
+      );
+
+      // 2. Chama o controller
+      _controller.cadastrarInstituicao(context, instituicao);
+    }
   }
 }

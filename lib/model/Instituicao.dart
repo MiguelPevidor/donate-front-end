@@ -1,54 +1,48 @@
-import 'dart:convert';
+class Instituicao {
+  final int? id; // Nullable
+  final String nomeInstituicao;
+  final String missao;
+  final String cnpj;
+  final String telefone;
+  final String email;
+  final String login;
+  final String? senha;
 
+  Instituicao({
+    this.id,
+    required this.nomeInstituicao,
+    required this.missao,
+    required this.cnpj,
+    required this.telefone,
+    required this.email,
+    required this.login,
+    this.senha,
+  });
 
-import 'Objeto.dart';
-
-Comparator<Instituicao> InstituicaoPorNome= (u1, u2) => u1.nome!.compareTo(u2.nome!);
-
-
-abstract class TipoInstituicao{
-  static final String padrao = "Padrão";
-  static final String administrador = "Administrador";
-}
-
-
-class Instituicao extends Objeto{
-  String? nome;
-  String? tipo;
-  String? login;
-  String? senha;
-  String? endereco;
-  String? urlFoto;
-
-
-  Instituicao({this.nome, this.tipo, this.login, this.senha, this.endereco, this.urlFoto});
-
-
-  @override
-  String toString() {
-    return 'Instituicao{id: $id, nome: $nome, tipo: $tipo, login: $login, senha: $senha, endereco: $endereco, urlFoto: $urlFoto}';
+  // Enviar para API
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id, // Se for null, o Spring geralmente ignora no cadastro
+      'nome': nomeInstituicao,
+      'missao': missao,
+      'cnpj': cnpj,
+      'telefone': telefone,
+      'email': email,
+      'login': login,
+      'senha': senha,
+    };
   }
 
-  Instituicao.fromMap(Map<String, dynamic> map) : super.fromMap(map){
-    nome = map["nome"];
-    tipo = map["tipo"];
-    login = map["login"];
-    senha = map["senha"];
-    endereco = map["endereco"];
-    urlFoto = map["urlFoto"];
+  // Receber da API
+  factory Instituicao.fromJson(Map<String, dynamic> json) {
+    return Instituicao(
+      id: json['id'],
+      nomeInstituicao: json['nome'], // Verifique se o backend manda 'nome' ou 'nomeInstituicao'
+      missao: json['missao'],
+      cnpj: json['cnpj'],
+      telefone: json['telefone'],
+      email: json['email'],
+      login: json['login'],
+    );
   }
-
-  Map<String, dynamic> toMap(){
-    final Map<String, dynamic> data = Map<String, dynamic>();
-    data['id'] = this.id;
-    data['nome'] = this.nome;
-    data['tipo'] = this.tipo;
-    data['login'] = this.login;
-    data['senha'] = this.senha;
-    data['endereco'] = this.endereco;
-    data['urlFoto'] = this.urlFoto;
-    return data;
-  }
-
-
 }
