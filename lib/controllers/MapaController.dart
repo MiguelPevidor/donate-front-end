@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:donate/util/Constants.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -6,8 +7,6 @@ import '../model/PontoDeColeta.dart';
 import '../util/GeradorBitmapDescriptor.dart'; 
 
 class MapaController extends ChangeNotifier {
-  // Configurado para Chrome/Web na porta 5020
-  final String baseUrl = 'http://localhost:5020'; 
 
   late GoogleMapController mapController;
   Set<Marker>? markers = {};
@@ -23,7 +22,7 @@ class MapaController extends ChangeNotifier {
 
   Future<void> buscarPontosDeColeta() async {
     try {
-      final uri = Uri.parse('$baseUrl/api/pontos-de-coleta/listar-todos');
+      final uri = Uri.parse('${Constants.baseUrl}/pontos-de-coleta/listar-todos');
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
