@@ -1,6 +1,7 @@
 import 'package:donate/components/MyTextField.dart';
 import 'package:donate/view/CadastroUsuarioPage.dart';
 import 'package:flutter/material.dart';
+import 'package:donate/controllers/LoginController.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,6 +11,9 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+
+  // Instancia o Controller de Login
+  final LoginController _loginController = LoginController();
 
     // TextControllers
     final _emailTextController = TextEditingController();
@@ -135,22 +139,37 @@ class _LoginPageState extends State<LoginPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pushNamed(context, "/homePage");
+        // ValueListenableBuilder escuta se está carregando ou não
+        ValueListenableBuilder<bool>(
+          valueListenable: _loginController.isLoading,
+          builder: (context, isLoading, child) {
+            return ElevatedButton(
+              onPressed: isLoading 
+                  ? null // Desabilita o botão se estiver carregando
+                  : () {
+                      // CHAMA O MÉTODO DO CONTROLLER
+                      _loginController.logar(
+                        context,
+                        _emailTextController.text,
+                        _passwordTextController.text,
+                      );
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[700],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: isLoading 
+                  ? const CircularProgressIndicator(color: Colors.white) // Mostra spinner
+                  : const Text(
+                      "Login",
+                      style: TextStyle(fontSize: 18),
+                    ),
+            );
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue[700],
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          child: const Text(
-            "Login",
-            style: TextStyle(fontSize: 18),
-          ),
         ),
         const SizedBox(height: 30),
       ],
