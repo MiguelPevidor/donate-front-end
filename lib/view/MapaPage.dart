@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'package:donate/components/menuLateral.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-
+import 'package:geolocator/geolocator.dart'; // Adicione este import
+import '../components/menuLateral.dart';
 import '../controllers/MapaController.dart';
 
 class MapaPage extends StatefulWidget {
@@ -16,7 +16,9 @@ class _MapaPageState extends State<MapaPage> {
   late MapaController _controle;
   late Future<List<Marker>> future;
   
-  // Chave Global para abrir o Drawer via código
+  // Variável para controlar se a bolinha azul deve aparecer
+  bool _localizacaoAtiva = false;
+
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -24,19 +26,38 @@ class _MapaPageState extends State<MapaPage> {
     super.initState();
     _controle = MapaController();
     future = _carregarDados();
+    _verificarPermissoes(); // Verifica permissão ao iniciar
+  }
+
+  // Novo método para checar permissão e ativar a bolinha
+  Future<void> _verificarPermissoes() async {
+    LocationPermission permissao = await Geolocator.checkPermission();
+    
+    if (permissao == LocationPermission.denied) {
+      permissao = await Geolocator.requestPermission();
+    }
+
+    if (permissao == LocationPermission.whileInUse || 
+        permissao == LocationPermission.always) {
+      setState(() {
+        _localizacaoAtiva = true; // Ativa a bolinha azul
+      });
+      // Opcional: Centraliza no usuário assim que tiver permissão
+      _controle.centralizarNoUsuario();
+    }
   }
 
   Future<List<Marker>> _carregarDados() async {
-    await _controle.buscarPontosDeColeta(); // Busca na API
-    return _controle.obterMarkers(); // Cria os pinos
+    await _controle.buscarPontosDeColeta();
+    return _controle.obterMarkers();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _scaffoldKey, // Vincula a chave ao Scaffold
-      drawer: MenuLateral(), // Seu menu lateral
-      extendBodyBehindAppBar: true, // Permite que o mapa fique atrás da barra de status
+      key: _scaffoldKey,
+      drawer: MenuLateral(),
+      extendBodyBehindAppBar: true,
       
       body: FutureBuilder<List<Marker>>(
         future: future,
@@ -45,7 +66,6 @@ class _MapaPageState extends State<MapaPage> {
             return Center(child: CircularProgressIndicator());
           }
           
-          // Atualiza markers no controller se vieram dados
           if (snapshot.hasData) {
              _controle.markers = snapshot.data!.toSet();
           }
@@ -56,29 +76,29 @@ class _MapaPageState extends State<MapaPage> {
     );
   }
 
-  void _onMapCreated(GoogleMapController controller) {
-    _controle.mapController = controller;
-  }
-
   Widget _conteudoMapa() {
     return Stack(
       children: <Widget>[
-        // CAMADA 1: O Mapa
         GoogleMap(
           initialCameraPosition: CameraPosition(
             target: _controle.obterPosicaoInicial(),
             zoom: 15,
           ),
           markers: _controle.markers ?? {},
-          onMapCreated: _onMapCreated,
-          zoomControlsEnabled: false, // Mapa limpo
-          myLocationEnabled: true,    // Mostra onde estou
-          myLocationButtonEnabled: false,
+          onMapCreated: _controle.onMapCreated,
+          zoomControlsEnabled: false,
+          
+          // --- AQUI ESTÁ O SEGREDO ---
+          // Se for false, o Google Maps nem tenta desenhar a camada
+          // Se for true, ele desenha a bolinha azul
+          myLocationEnabled: _localizacaoAtiva, 
+          // ---------------------------
+          
+          myLocationButtonEnabled: false, 
         ),
 
-        // CAMADA 2: Botão Menu (Topo Esquerdo)
         Positioned(
-          top: 50, // Margem superior para não ficar sob o relógio
+          top: 50,
           left: 20,
           child: FloatingActionButton(
             heroTag: "btnMenu",
@@ -86,22 +106,38 @@ class _MapaPageState extends State<MapaPage> {
             foregroundColor: Colors.black,
             child: Icon(Icons.menu),
             onPressed: () {
-              // Abre o menu lateral
               _scaffoldKey.currentState?.openDrawer();
             },
           ),
         ),
 
-        // CAMADA 3: Botão Próximo (Inferior Direito)
         Positioned(
           bottom: 20,
           right: 20,
-          child: FloatingActionButton(
-            heroTag: "btnNext",
-            child: Icon(Icons.navigate_next),
-            onPressed: () {
-              _controle.avancarProximoMarker();
-            },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton(
+                heroTag: "btnMeuLocal",
+                backgroundColor: Colors.blueAccent,
+                child: Icon(Icons.my_location, color: Colors.white),
+                onPressed: () {
+                  _controle.centralizarNoUsuario();
+                },
+              ),
+              
+              SizedBox(height: 15),
+
+              FloatingActionButton(
+                heroTag: "btnNext",
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                child: Icon(Icons.navigate_next),
+                onPressed: () {
+                  _controle.avancarProximoMarker();
+                },
+              ),
+            ],
           ),
         ),
       ],
