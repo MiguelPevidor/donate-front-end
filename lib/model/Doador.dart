@@ -1,6 +1,6 @@
 class Doador {
   
-  final int? id; 
+  final String? id; 
   final String nome;
   final String cpf;
   final String telefone;

@@ -1,5 +1,5 @@
 class Instituicao {
-  final int? id; // Nullable
+  final String? id; // Nullable
   final String nomeInstituicao;
   final String missao;
   final String cnpj;
