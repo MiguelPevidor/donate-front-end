@@ -1,23 +1,47 @@
 import 'dart:convert';
-import 'package:donate/util/Constants.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart'; // Importante para o Position
+
+import '../util/Constants.dart';
+import '../util/localizador.dart'; // Importe seu Localizador
 import '../model/PontoDeColeta.dart';
-import '../util/GeradorBitmapDescriptor.dart'; 
+import '../util/GeradorBitmapDescriptor.dart';
 
 class MapaController extends ChangeNotifier {
-
   late GoogleMapController mapController;
   Set<Marker>? markers = {};
   List<PontoDeColeta> pontos = [];
-  
+
+  // Posição inicial provisória (ex: centro da cidade) até o GPS carregar
   final LatLng _posicaoInicial = const LatLng(-19.5393, -40.6305);
 
   LatLng obterPosicaoInicial() => _posicaoInicial;
 
-  void inicializarPosicaoAtual() {
-    notifyListeners();
+  // --- NOVO: Método para ser chamado quando o mapa for criado ---
+  void onMapCreated(GoogleMapController controller) {
+    mapController = controller;
+    centralizarNoUsuario(); // Tenta focar no usuário assim que o mapa abre
+  }
+
+  // --- NOVO: Lógica para mover a câmera para o usuário ---
+  Future<void> centralizarNoUsuario() async {
+    try {
+      Position posicao = await Localizador.determinarPosicaoAtual();
+      
+      mapController.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(posicao.latitude, posicao.longitude),
+            zoom: 16,
+          ),
+        ),
+      );
+    } catch (e) {
+      print("Erro ao obter localização: $e");
+      // Opcional: Mostrar um aviso na tela se falhar
+    }
   }
 
   Future<void> buscarPontosDeColeta() async {
@@ -37,13 +61,11 @@ class MapaController extends ChangeNotifier {
     }
   }
 
-  // --- AQUI ESTÁ A MUDANÇA ---
   Future<List<Marker>> obterMarkers() async {
     Set<Marker> novosMarkers = {};
-    
     BitmapDescriptor icone;
+    
     try {
-       // REDUZI O TAMANHO DE 100.0 PARA 45.0
        icone = await GeradorBitmapDescriptor.gerarIcone(
          Icons.location_on, 
          Colors.green, 
@@ -61,6 +83,7 @@ class MapaController extends ChangeNotifier {
           icon: icone, 
           infoWindow: InfoWindow(
             snippet: ponto.horarioFuncionamento,
+            title: "Ponto de Coleta", // Adicionei um título padrão se não tiver nome
           ),
         );
         novosMarkers.add(marker);
