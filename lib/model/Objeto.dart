@@ -1,6 +1,6 @@
 
 abstract class Objeto{
-  late int id;
+  late String id;
 
   Objeto();
 

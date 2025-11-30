@@ -1,5 +1,6 @@
 class Item {
-  final String? id;
+  // Mantido sua versão (Nullable) para flexibilidade e compatibilidade com seu código
+  final String? id; 
   final String nomeItem;
 
   Item({this.id, required this.nomeItem});
@@ -7,10 +8,14 @@ class Item {
   factory Item.fromJson(Map<String, dynamic> json) {
     return Item(
       id: json['id'],
-      nomeItem: json['nomeItem'],
+      nomeItem: json['nomeItem'], // Mantido seu mapeamento
     );
   }
 
-  // Para enviar apenas o ID no cadastro do ponto
+  // Mantido seu método (Necessário para o seu cadastro)
   Map<String, dynamic> toJson() => {'id': id, 'nomeItem': nomeItem};
+
+  // Adicionado funcionalidade do colega (Útil para logs e Dropdowns)
+  @override
+  String toString() => nomeItem;
 }
