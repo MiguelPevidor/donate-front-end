@@ -1,13 +1,13 @@
-import 'package:donate/model/Item.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart'; // Importante para o Position
 
-import '../util/Constants.dart';
-import '../util/localizador.dart'; // Importe seu Localizador
+// Imports dos seus Models e Utils
+import 'package:donate/model/Item.dart';
 import '../model/PontoDeColeta.dart';
 import '../services/MapaService.dart';
 import '../util/GeradorBitmapDescriptor.dart';
+import '../util/localizador.dart'; // Certifique-se de ter este arquivo com a lógica do GPS
 
 class MapaController extends ChangeNotifier {
   final MapaService _service = MapaService();
@@ -17,20 +17,21 @@ class MapaController extends ChangeNotifier {
   
   // Listas de dados
   List<PontoDeColeta> pontos = [];
-  List<Item> tiposItens = []; 
+  List<Item> tiposItens = []; // Lista de Objetos Item (ID + Nome)
 
   final LatLng _posicaoInicial = const LatLng(-19.5393, -40.6305);
   LatLng obterPosicaoInicial() => _posicaoInicial;
 
-  // --- NOVO: Método para ser chamado quando o mapa for criado ---
+  // --- MÉTODOS DE MAPA (Vindos do Remoto) ---
   void onMapCreated(GoogleMapController controller) {
     mapController = controller;
-    centralizarNoUsuario(); // Tenta focar no usuário assim que o mapa abre
+    // Tenta focar no usuário assim que o mapa abre (se tiver permissão)
+    centralizarNoUsuario(); 
   }
 
-  // --- NOVO: Lógica para mover a câmera para o usuário ---
   Future<void> centralizarNoUsuario() async {
     try {
+      // Usa sua classe utilitária Localizador
       Position posicao = await Localizador.determinarPosicaoAtual();
       
       mapController.animateCamera(
@@ -43,10 +44,10 @@ class MapaController extends ChangeNotifier {
       );
     } catch (e) {
       print("Erro ao obter localização: $e");
-      // Opcional: Mostrar um aviso na tela se falhar
     }
+  }
+
   // --- INICIALIZAÇÃO ---
-  // Carrega tudo que a tela precisa ao abrir
   Future<void> inicializarDados() async {
     // 1. Carrega os chips (categorias)
     tiposItens = await _service.buscarItens();
@@ -65,12 +66,13 @@ class MapaController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> buscarPontosPorFiltro(List<String> itensSelecionados) async {
-    if (itensSelecionados.isEmpty) {
+  // ADAPTAÇÃO: Recebe List<String> (IDs) para filtrar
+  Future<void> buscarPontosPorFiltro(List<String> idsSelecionados) async {
+    if (idsSelecionados.isEmpty) {
       await buscarTodosPontos();
       return;
     }
-    pontos = await _service.buscarPontosPorFiltro(itensSelecionados);
+    pontos = await _service.buscarPontosPorFiltro(idsSelecionados);
     await _gerarMarkers();
     notifyListeners();
   }
@@ -94,9 +96,8 @@ class MapaController extends ChangeNotifier {
           position: LatLng(ponto.latitude, ponto.longitude),
           icon: icone,
           infoWindow: InfoWindow(
-            title: ponto.nome,
-            snippet: ponto.horarioFuncionamento,
-            title: "Ponto de Coleta", // Adicionei um título padrão se não tiver nome
+            title: ponto.nome, // Nome do ponto
+            snippet: ponto.horarioFuncionamento, // Horário
           ),
         ));
       }

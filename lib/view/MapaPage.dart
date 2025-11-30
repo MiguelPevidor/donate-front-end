@@ -1,8 +1,10 @@
-import 'package:donate/model/Item.dart'; // <--- IMPORTANTE: Importe seu Model Item
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart'; // Adicione este import
-import '../components/menuLateral.dart';
+import 'package:geolocator/geolocator.dart'; // Importante para permissões
+
+import 'package:donate/components/menuLateral.dart';
+import 'package:donate/model/Item.dart'; // Seu Model Item
 import '../controllers/MapaController.dart';
 
 class MapaPage extends StatefulWidget {
@@ -13,47 +15,58 @@ class MapaPage extends StatefulWidget {
 }
 
 class _MapaPageState extends State<MapaPage> {
+  // --- CONTROLADORES ---
   late MapaController _controle;
-  late Future<void> _futureInicializacao;
-  
-  // Variável para controlar se a bolinha azul deve aparecer
-  bool _localizacaoAtiva = false;
-
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _searchController = TextEditingController();
   final DraggableScrollableController _sheetController = DraggableScrollableController();
 
-  // AGORA USAMOS UMA LISTA DE IDs (INTEIROS) PARA O FILTRO
-  List<String> _idsSelecionados = [];
+  // --- ESTADO ---
+  late Future<void> _futureInicializacao;
+  bool _localizacaoAtiva = false; // Controla a bolinha azul
   bool _isLoadingFiltro = false;
+  
+  // Lista de IDs (Strings para garantir compatibilidade com UUID ou Int convertidos)
+  List<String> _idsSelecionados = [];
 
   @override
   void initState() {
     super.initState();
     _controle = MapaController();
+    
+    // 1. Carrega dados da API (Chips + Pontos)
     _futureInicializacao = _controle.inicializarDados();
-    _verificarPermissoes(); // Verifica permissão ao iniciar
+    
+    // 2. Verifica permissão de GPS
+    _verificarPermissoes();
   }
 
-  // Novo método para checar permissão e ativar a bolinha
+  // --- LÓGICA DE PERMISSÃO (Vinda do Remoto) ---
   Future<void> _verificarPermissoes() async {
-    LocationPermission permissao = await Geolocator.checkPermission();
-    
+    bool servicoAtivo;
+    LocationPermission permissao;
+
+    servicoAtivo = await Geolocator.isLocationServiceEnabled();
+    if (!servicoAtivo) return;
+
+    permissao = await Geolocator.checkPermission();
     if (permissao == LocationPermission.denied) {
       permissao = await Geolocator.requestPermission();
+      if (permissao == LocationPermission.denied) return;
     }
 
-    if (permissao == LocationPermission.whileInUse || 
-        permissao == LocationPermission.always) {
-      setState(() {
-        _localizacaoAtiva = true; // Ativa a bolinha azul
-      });
-      // Opcional: Centraliza no usuário assim que tiver permissão
-      _controle.centralizarNoUsuario();
-    }
+    if (permissao == LocationPermission.deniedForever) return;
+
+    // Se chegou aqui, tem permissão
+    setState(() {
+      _localizacaoAtiva = true;
+    });
+    
+    // Tenta focar no usuário
+    _controle.centralizarNoUsuario();
   }
 
-  // O filtro agora recebe o ID do item
+  // --- LÓGICA DE FILTRO ---
   void _filtrar(String idItem, bool selected) async {
     setState(() {
       if (selected) {
@@ -64,7 +77,6 @@ class _MapaPageState extends State<MapaPage> {
       _isLoadingFiltro = true;
     });
 
-    // Passa a lista de IDs para o controller buscar
     await _controle.buscarPontosPorFiltro(_idsSelecionados);
 
     setState(() {
@@ -89,11 +101,7 @@ class _MapaPageState extends State<MapaPage> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          
-          if (snapshot.hasData) {
-             _controle.markers = snapshot.data!.toSet();
-          }
-          
+          // Se houver erro, você pode tratar aqui
           return _conteudoMapa();
         },
       ),
@@ -110,65 +118,61 @@ class _MapaPageState extends State<MapaPage> {
             zoom: 15,
           ),
           markers: _controle.markers ?? {},
-          onMapCreated: _controle.onMapCreated,
+          onMapCreated: _controle.onMapCreated, // Passa para o controller
           zoomControlsEnabled: false,
           
-          // --- AQUI ESTÁ O SEGREDO ---
-          // Se for false, o Google Maps nem tenta desenhar a camada
-          // Se for true, ele desenha a bolinha azul
+          // Configuração de Localização
           myLocationEnabled: _localizacaoAtiva, 
-          // ---------------------------
+          myLocationButtonEnabled: false, // Usaremos nosso botão customizado
           
-          myLocationButtonEnabled: false, 
+          padding: const EdgeInsets.only(bottom: 120),
         ),
 
         // 2. BOTÃO MENU
         Positioned(
-          top: 50,
-          left: 20,
+          top: 50, left: 20,
           child: FloatingActionButton(
             heroTag: "btnMenu",
             backgroundColor: Colors.white,
             foregroundColor: Colors.black,
-            child: Icon(Icons.menu),
-            onPressed: () {
-              _scaffoldKey.currentState?.openDrawer();
-            },
+            child: const Icon(Icons.menu),
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
         ),
 
-        // 3. BOTÃO PRÓXIMO
+        // 3. BOTÕES DE AÇÃO (Lateral Direita)
         Positioned(
-          bottom: 120, 
+          bottom: 140, 
           right: 20,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              FloatingActionButton(
-                heroTag: "btnMeuLocal",
-                backgroundColor: Colors.blueAccent,
-                child: Icon(Icons.my_location, color: Colors.white),
-                onPressed: () {
-                  _controle.centralizarNoUsuario();
-                },
-              ),
-              
-              SizedBox(height: 15),
+              // Botão Meu Local (Só aparece se tiver permissão)
+              if (_localizacaoAtiva)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: FloatingActionButton(
+                    heroTag: "btnMeuLocal",
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.blue,
+                    child: const Icon(Icons.my_location),
+                    onPressed: () => _controle.centralizarNoUsuario(),
+                  ),
+                ),
 
+              // Botão Próximo Ponto
               FloatingActionButton(
                 heroTag: "btnNext",
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-                child: Icon(Icons.navigate_next),
-                onPressed: () {
-                  _controle.avancarProximoMarker();
-                },
+                backgroundColor: Colors.blue[700],
+                foregroundColor: Colors.white,
+                child: const Icon(Icons.navigate_next),
+                onPressed: () => _controle.avancarProximoMarker(),
               ),
             ],
           ),
         ),
 
-        // 4. PAINEL DE PESQUISA FLUTUANTE
+        // 4. PAINEL DE PESQUISA
         _buildFloatingSearchSheet(),
       ],
     );
@@ -231,36 +235,30 @@ class _MapaPageState extends State<MapaPage> {
               
               const SizedBox(height: 10),
 
-             
+              // CHIPS (Horizontal Scroll)
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
-                  // Itera sobre a lista de Objetos ITEM (que tem id e descricao)
                   children: _controle.tiposItens.map((Item item) {
-                    
-                    // Verifica se o ID deste item está na lista de selecionados
-                    final isSelected = _idsSelecionados.contains(item.id);
+                    final String idStr = item.id.toString();
+                    final isSelected = _idsSelecionados.contains(idStr);
                     
                     return Padding(
                       padding: const EdgeInsets.only(right: 8.0),
                       child: FilterChip(
-                        // VISUAL: MOSTRA APENAS O NOME (DESCRICAO)
-                        label: Text(item.nomeItem), 
-                        
+                        label: Text(item.nomeItem), // VISUAL: Nome
                         selected: isSelected,
                         selectedColor: Colors.teal[100],
                         checkmarkColor: Colors.teal,
                         onSelected: (bool selected) {
-                          // LÓGICA: USA O ID PARA O FILTRO
-                          _filtrar(item.id, selected);
+                          _filtrar(idStr, selected); // LÓGICA: ID
                         },
                       ),
                     );
                   }).toList(),
                 ),
               ),
-              // -----------------------------------------------------------
 
               const Divider(height: 30),
 
@@ -269,7 +267,7 @@ class _MapaPageState extends State<MapaPage> {
                 child: const Text("Pontos de Coleta Próximos", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
 
-              // RESULTADOS DA LISTA
+              // LISTA DE RESULTADOS
               if (_isLoadingFiltro)
                  const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
               else if (_controle.pontos.isEmpty)
@@ -282,7 +280,7 @@ class _MapaPageState extends State<MapaPage> {
                       child: Icon(Icons.location_on, color: Colors.white),
                     ),
                     title: Text(ponto.nome),
-                    subtitle: Text(ponto.horarioFuncionamento ?? ""),
+                    subtitle: Text(ponto.horarioFuncionamento),
                     onTap: () {
                       _controle.irParaPonto(ponto.latitude, ponto.longitude);
                       _sheetController.animateTo(0.15, duration: const Duration(milliseconds: 300), curve: Curves.easeIn);
