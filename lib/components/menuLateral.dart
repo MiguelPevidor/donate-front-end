@@ -7,6 +7,12 @@ import '../controllers/LoginController.dart';
 import '../services/AuthService.dart';
 
 class MenuLateral extends StatefulWidget {
+  // 1. Adicionamos esta variável para receber a função de atualização
+  final VoidCallback? onAtualizarMapa;
+
+  // Construtor atualizado
+  const MenuLateral({Key? key, this.onAtualizarMapa}) : super(key: key);
+
   @override
   _MenuLateralState createState() => _MenuLateralState();
 }
@@ -18,7 +24,7 @@ class _MenuLateralState extends State<MenuLateral> {
 
   String _nomeUsuario = "Carregando...";
   String _emailUsuario = "...";
-  bool _isInstituicao = false; // Controle para exibir o menu
+  bool _isInstituicao = false;
 
   @override
   void initState() {
@@ -32,7 +38,6 @@ class _MenuLateralState extends State<MenuLateral> {
       String? userId = await _storage.read(key: 'userId'); 
 
       if (token != null) {
-        // 1. Decodifica o token para saber o Role (Doador ou Instituição)
         Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
         String role = decodedToken['role']?.toString().toUpperCase() ?? '';
         
@@ -42,7 +47,6 @@ class _MenuLateralState extends State<MenuLateral> {
           });
         }
 
-        // 2. Busca dados atualizados do usuário (Nome/Email)
         if (userId != null) {
           final dados = await _authService.getUsuario(userId, token);
           if (mounted) {
@@ -63,11 +67,6 @@ class _MenuLateralState extends State<MenuLateral> {
       }
     } catch (e) {
       print("Erro ao carregar usuário no menu: $e");
-      if (mounted) {
-        setState(() {
-          _nomeUsuario = "Erro ao carregar";
-        });
-      }
     }
   }
 
@@ -77,7 +76,6 @@ class _MenuLateralState extends State<MenuLateral> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          // --- Cabeçalho ---
           UserAccountsDrawerHeader(
             accountName: Text(_nomeUsuario),
             accountEmail: Text(_emailUsuario),
@@ -92,7 +90,6 @@ class _MenuLateralState extends State<MenuLateral> {
             decoration: BoxDecoration(color: Colors.blue),
           ),
           
-          // --- Item: Gerenciar Dados Pessoais ---
           ListTile(
             leading: Icon(Icons.edit),
             title: Text('Gerenciar meus dados'),
@@ -106,24 +103,29 @@ class _MenuLateralState extends State<MenuLateral> {
             },
           ),
 
-          // --- Item: Gerenciar Pontos de Coleta (Só para Instituição) ---
           if (_isInstituicao)
             ListTile(
               leading: Icon(Icons.store, color: Colors.green[700]),
               title: Text('Gerenciar Pontos de Coleta'),
               subtitle: Text('Adicionar ou editar locais'),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context); // Fecha o drawer
-                Navigator.push(
+                
+                // 2. O 'await' faz o código esperar você voltar da tela MeusPontosPage
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => MeusPontosPage()),
                 );
+
+                // 3. Quando você voltar, se a função existir, ela roda e atualiza o mapa
+                if (widget.onAtualizarMapa != null) {
+                  widget.onAtualizarMapa!();
+                }
               },
             ),
 
           Divider(),
 
-          // --- Item: Sair ---
           ListTile(
             leading: Icon(Icons.exit_to_app, color: Colors.red),
             title: Text('Sair', style: TextStyle(color: Colors.red)),
