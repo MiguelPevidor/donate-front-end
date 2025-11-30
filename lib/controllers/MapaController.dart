@@ -1,31 +1,28 @@
 import 'dart:convert';
+import 'package:donate/util/Constants.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:geolocator/geolocator.dart'; // Importante para o Position
-
-import '../util/Constants.dart';
-import '../util/localizador.dart'; // Importe seu Localizador
+import 'package:geolocator/geolocator.dart'; // Import para o Position
 import '../model/PontoDeColeta.dart';
+import '../util/localizador.dart'; 
 import '../util/GeradorBitmapDescriptor.dart';
 
 class MapaController extends ChangeNotifier {
+
   late GoogleMapController mapController;
   Set<Marker>? markers = {};
   List<PontoDeColeta> pontos = [];
-
-  // Posição inicial provisória (ex: centro da cidade) até o GPS carregar
+  
   final LatLng _posicaoInicial = const LatLng(-19.5393, -40.6305);
 
   LatLng obterPosicaoInicial() => _posicaoInicial;
 
-  // --- NOVO: Método para ser chamado quando o mapa for criado ---
   void onMapCreated(GoogleMapController controller) {
     mapController = controller;
-    centralizarNoUsuario(); // Tenta focar no usuário assim que o mapa abre
+    centralizarNoUsuario(); 
   }
 
-  // --- NOVO: Lógica para mover a câmera para o usuário ---
   Future<void> centralizarNoUsuario() async {
     try {
       Position posicao = await Localizador.determinarPosicaoAtual();
@@ -40,7 +37,6 @@ class MapaController extends ChangeNotifier {
       );
     } catch (e) {
       print("Erro ao obter localização: $e");
-      // Opcional: Mostrar um aviso na tela se falhar
     }
   }
 
@@ -63,8 +59,8 @@ class MapaController extends ChangeNotifier {
 
   Future<List<Marker>> obterMarkers() async {
     Set<Marker> novosMarkers = {};
-    BitmapDescriptor icone;
     
+    BitmapDescriptor icone;
     try {
        icone = await GeradorBitmapDescriptor.gerarIcone(
          Icons.location_on, 
@@ -76,14 +72,19 @@ class MapaController extends ChangeNotifier {
     }
 
     for (var ponto in pontos) {
-      if (ponto.latitude != 0.0 && ponto.longitude != 0.0) {
+      // CORREÇÃO: Acessamos lat/long através do objeto 'endereco'
+      // E verificamos se são nulos, pois no modelo Endereco eles são double?
+      final double? lat = ponto.endereco.latitude;
+      final double? long = ponto.endereco.longitude;
+
+      if (lat != null && long != null && lat != 0.0 && long != 0.0 && ponto.id != null) {
         final marker = Marker(
-          markerId: MarkerId(ponto.id),
-          position: LatLng(ponto.latitude, ponto.longitude),
+          markerId: MarkerId(ponto.id!), // Usamos ! pois já checamos null acima
+          position: LatLng(lat, long),
           icon: icone, 
           infoWindow: InfoWindow(
             snippet: ponto.horarioFuncionamento,
-            title: "Ponto de Coleta", // Adicionei um título padrão se não tiver nome
+            title: "Ponto de Coleta",
           ),
         );
         novosMarkers.add(marker);
@@ -101,10 +102,16 @@ class MapaController extends ChangeNotifier {
     if (_indexAtual >= pontos.length) _indexAtual = 0;
     
     final ponto = pontos[_indexAtual];
-    mapController.animateCamera(
-      CameraUpdate.newLatLngZoom(LatLng(ponto.latitude, ponto.longitude), 16),
-    );
-    mapController.showMarkerInfoWindow(MarkerId(ponto.id));
+    final double? lat = ponto.endereco.latitude;
+    final double? long = ponto.endereco.longitude;
+
+    if (lat != null && long != null && ponto.id != null) {
+      mapController.animateCamera(
+        CameraUpdate.newLatLngZoom(LatLng(lat, long), 16),
+      );
+      mapController.showMarkerInfoWindow(MarkerId(ponto.id!));
+    }
+    
     _indexAtual++;
   }
 }

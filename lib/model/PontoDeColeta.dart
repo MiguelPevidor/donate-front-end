@@ -1,29 +1,48 @@
+import 'Endereco.dart';
+import 'Item.dart';
+
 class PontoDeColeta {
-  final String id;
+  final String? id;
   final String horarioFuncionamento;
-  final double latitude;
-  final double longitude;
+  final int capacidadeMaxima;
+  final int? capacidadeAtual;
+  final Endereco endereco;
+  final List<Item> itensAceitos;
+  final String? instituicaoId;
 
   PontoDeColeta({
-    required this.id,
+    this.id,
     required this.horarioFuncionamento,
-    required this.latitude,
-    required this.longitude,
+    required this.capacidadeMaxima,
+    this.capacidadeAtual,
+    required this.endereco,
+    required this.itensAceitos,
+    this.instituicaoId,
   });
 
   factory PontoDeColeta.fromJson(Map<String, dynamic> json) {
-    final endereco = json['endereco'] ?? {};
-    
+    var listaItens = json['itensAceitos'] as List? ?? [];
+    List<Item> itens = listaItens.map((i) => Item.fromJson(i)).toList();
+
     return PontoDeColeta(
-      // Garante que o ID seja String
-      id: json['id']?.toString() ?? '',
-      
-      // Mapeia o campo correto do seu JSON
-      horarioFuncionamento: json['horarioFuncionamento'] ?? 'Horário não informado',
-      
-      latitude: double.tryParse(endereco['latitude']?.toString() ?? '') ?? 0.0,
-      longitude: double.tryParse(endereco['longitude']?.toString() ?? '') ?? 0.0,
+      id: json['id'],
+      horarioFuncionamento: json['horarioFuncionamento'],
+      capacidadeMaxima: json['capacidadeMaxima'],
+      capacidadeAtual: json['capacidadeAtual'],
+      endereco: Endereco.fromJson(json['endereco']),
+      itensAceitos: itens,
+      instituicaoId: json['instituicaoId'],
     );
   }
 
+  // Para enviar ao criar/editar (PontoDeColetaRequestDTO)
+  Map<String, dynamic> toRequestJson(List<String> itensIdsSelecionados) {
+    return {
+      'horarioFuncionamento': horarioFuncionamento,
+      'capacidadeMaxima': capacidadeMaxima,
+      'instituicaoId': instituicaoId,
+      'endereco': endereco.toJson(),
+      'itensIds': itensIdsSelecionados, // Set<UUID> no Java
+    };
+  }
 }
