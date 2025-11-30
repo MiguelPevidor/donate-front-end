@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart'; // Importante para o Position
+import 'package:geolocator/geolocator.dart';
 
-// Imports dos seus Models e Utils
-import 'package:donate/model/Item.dart';
+// Imports dos Models e Utils
+import 'package:donate/model/Item.dart'; // Do colega
 import '../model/PontoDeColeta.dart';
-import '../services/MapaService.dart';
+import '../services/MapaService.dart'; // Do colega
 import '../util/GeradorBitmapDescriptor.dart';
-import '../util/localizador.dart'; // Certifique-se de ter este arquivo com a lógica do GPS
+import '../util/localizador.dart';
 
 class MapaController extends ChangeNotifier {
+  // --- FUNCIONALIDADE DO COLEGA (Service) ---
   final MapaService _service = MapaService();
 
   late GoogleMapController mapController;
@@ -17,21 +18,18 @@ class MapaController extends ChangeNotifier {
   
   // Listas de dados
   List<PontoDeColeta> pontos = [];
-  List<Item> tiposItens = []; // Lista de Objetos Item (ID + Nome)
+  List<Item> tiposItens = []; // Do colega (Lista de categorias para filtrar)
 
   final LatLng _posicaoInicial = const LatLng(-19.5393, -40.6305);
   LatLng obterPosicaoInicial() => _posicaoInicial;
 
-  // --- MÉTODOS DE MAPA (Vindos do Remoto) ---
   void onMapCreated(GoogleMapController controller) {
     mapController = controller;
-    // Tenta focar no usuário assim que o mapa abre (se tiver permissão)
     centralizarNoUsuario(); 
   }
 
   Future<void> centralizarNoUsuario() async {
     try {
-      // Usa sua classe utilitária Localizador
       Position posicao = await Localizador.determinarPosicaoAtual();
       
       mapController.animateCamera(
@@ -47,7 +45,8 @@ class MapaController extends ChangeNotifier {
     }
   }
 
-  // --- INICIALIZAÇÃO ---
+  // --- MÉTODOS NOVOS DO COLEGA (Inicialização e Filtros) ---
+
   Future<void> inicializarDados() async {
     // 1. Carrega os chips (categorias)
     tiposItens = await _service.buscarItens();
@@ -58,26 +57,24 @@ class MapaController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- MÉTODOS DE BUSCA ---
-
   Future<void> buscarTodosPontos() async {
     pontos = await _service.buscarTodosPontos();
-    await _gerarMarkers();
+    await _gerarMarkers(); // Chama a SUA função de markers corrigida
     notifyListeners();
   }
 
-  // ADAPTAÇÃO: Recebe List<String> (IDs) para filtrar
   Future<void> buscarPontosPorFiltro(List<String> idsSelecionados) async {
     if (idsSelecionados.isEmpty) {
       await buscarTodosPontos();
       return;
     }
     pontos = await _service.buscarPontosPorFiltro(idsSelecionados);
-    await _gerarMarkers();
+    await _gerarMarkers(); // Chama a SUA função de markers corrigida
     notifyListeners();
   }
 
-  // --- GERAÇÃO DE MARKERS ---
+  // --- SUA LÓGICA PRESERVADA (Geração de Markers com Endereço) ---
+  
   Future<void> _gerarMarkers() async {
     Set<Marker> novosMarkers = {};
     BitmapDescriptor icone;
@@ -90,30 +87,27 @@ class MapaController extends ChangeNotifier {
     }
 
     for (var ponto in pontos) {
-      if (ponto.latitude != 0.0 && ponto.longitude != 0.0) {
-        novosMarkers.add(Marker(
-          markerId: MarkerId(ponto.id.toString()),
-          position: LatLng(ponto.latitude, ponto.longitude),
-          icon: icone,
+      // AQUI MANTIVE SUA LÓGICA: Acessa lat/long via 'endereco'
+      final double? lat = ponto.endereco.latitude;
+      final double? long = ponto.endereco.longitude;
+
+      if (lat != null && long != null && lat != 0.0 && long != 0.0 && ponto.id != null) {
+        final marker = Marker(
+          markerId: MarkerId(ponto.id!), // Usamos ! pois já checamos null acima
+          position: LatLng(lat, long),
+          icon: icone, 
           infoWindow: InfoWindow(
-            title: ponto.nome, // Nome do ponto
-            snippet: ponto.horarioFuncionamento, // Horário
+            snippet: ponto.horarioFuncionamento,
+            title: "Ponto de Coleta",
           ),
-        ));
+        );
+        novosMarkers.add(marker);
       }
     }
     markers = novosMarkers;
   }
 
-  // --- NAVEGAÇÃO NO MAPA ---
-  
-  void irParaPonto(double lat, double lng) {
-    mapController.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: LatLng(lat, lng), zoom: 18),
-      ),
-    );
-  }
+  // --- NAVEGAÇÃO (Mantendo sua lógica de verificação de nulos) ---
 
   int _indexAtual = 0;
   void avancarProximoMarker() {
@@ -121,8 +115,27 @@ class MapaController extends ChangeNotifier {
     if (_indexAtual >= pontos.length) _indexAtual = 0;
 
     final ponto = pontos[_indexAtual];
-    irParaPonto(ponto.latitude, ponto.longitude);
-    mapController.showMarkerInfoWindow(MarkerId(ponto.id.toString()));
+    
+    // MANTIDA SUA LÓGICA DE ACESSO SEGURO
+    final double? lat = ponto.endereco.latitude;
+    final double? long = ponto.endereco.longitude;
+
+    if (lat != null && long != null && ponto.id != null) {
+      mapController.animateCamera(
+        CameraUpdate.newLatLngZoom(LatLng(lat, long), 16),
+      );
+      mapController.showMarkerInfoWindow(MarkerId(ponto.id!));
+    }
+    
     _indexAtual++;
+  }
+
+  // Método auxiliar do colega (Deixei aqui caso precise, mas seu 'avancarProximoMarker' não usa ele)
+  void irParaPonto(double lat, double lng) {
+    mapController.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: LatLng(lat, lng), zoom: 18),
+      ),
+    );
   }
 }

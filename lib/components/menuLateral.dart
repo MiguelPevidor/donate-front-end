@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:donate/view/EditarDadosPage.dart';
-import 'package:donate/controllers/LoginController.dart';
-import 'package:donate/services/AuthService.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
+import '../view/EditarDadosPage.dart';
+import '../view/MeusPontosPage.dart';
+import '../controllers/LoginController.dart';
+import '../services/AuthService.dart';
 
 class MenuLateral extends StatefulWidget {
+  // 1. Adicionamos esta variável para receber a função de atualização
+  final VoidCallback? onAtualizarMapa;
+
+  // Construtor atualizado
+  const MenuLateral({Key? key, this.onAtualizarMapa}) : super(key: key);
+
   @override
   _MenuLateralState createState() => _MenuLateralState();
 }
@@ -14,9 +22,9 @@ class _MenuLateralState extends State<MenuLateral> {
   final AuthService _authService = AuthService();
   final _storage = const FlutterSecureStorage();
 
-  // Variáveis para exibir no cabeçalho
   String _nomeUsuario = "Carregando...";
   String _emailUsuario = "...";
+  bool _isInstituicao = false;
 
   @override
   void initState() {
@@ -26,35 +34,39 @@ class _MenuLateralState extends State<MenuLateral> {
 
   Future<void> _carregarDadosUsuario() async {
     try {
-      // 1. Recupera o Token e o ID salvos no login
       String? token = await _storage.read(key: 'token');
-      String? userId = await _storage.read(key: 'userId'); // Certifique-se que salvou 'userId' no LoginController
+      String? userId = await _storage.read(key: 'userId'); 
 
-      if (token != null && userId != null) {
-        // 2. Chama a API para pegar os dados frescos
-        final dados = await _authService.getUsuario(userId, token);
-
-        // 3. Atualiza a tela (setState)
+      if (token != null) {
+        Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+        String role = decodedToken['role']?.toString().toUpperCase() ?? '';
+        
         if (mounted) {
           setState(() {
-            // O backend retorna: { "login": "...", "email": "...", ... }
-            _nomeUsuario = dados['login'] ?? "Usuário";
-            _emailUsuario = dados['email'] ?? "Sem email";
+            _isInstituicao = role.contains('INSTITUICAO');
           });
         }
+
+        if (userId != null) {
+          final dados = await _authService.getUsuario(userId, token);
+          if (mounted) {
+            setState(() {
+              _nomeUsuario = dados['login'] ?? "Usuário";
+              _emailUsuario = dados['email'] ?? "Sem email";
+            });
+          }
+        }
       } else {
-        setState(() {
-          _nomeUsuario = "Usuário Deslogado";
-          _emailUsuario = "";
-        });
+        if (mounted) {
+          setState(() {
+            _nomeUsuario = "Usuário Deslogado";
+            _emailUsuario = "";
+            _isInstituicao = false;
+          });
+        }
       }
     } catch (e) {
       print("Erro ao carregar usuário no menu: $e");
-      if (mounted) {
-        setState(() {
-          _nomeUsuario = "Erro ao carregar";
-        });
-      }
     }
   }
 
@@ -64,25 +76,24 @@ class _MenuLateralState extends State<MenuLateral> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          // Cabeçalho com dados dinâmicos
           UserAccountsDrawerHeader(
             accountName: Text(_nomeUsuario),
             accountEmail: Text(_emailUsuario),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
-              child: Text(
-                _nomeUsuario.isNotEmpty ? _nomeUsuario[0].toUpperCase() : "U",
-                style: TextStyle(fontSize: 40.0),
+              child: Icon(
+                _isInstituicao ? Icons.apartment : Icons.person,
+                size: 40.0,
+                color: Colors.blue,
               ),
             ),
             decoration: BoxDecoration(color: Colors.blue),
           ),
           
-          // Item: Gerenciar Dados
           ListTile(
             leading: Icon(Icons.edit),
             title: Text('Gerenciar meus dados'),
-            subtitle: Text('nome, email, telefone...'),
+            subtitle: Text('Nome, senha, contato...'),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -91,8 +102,30 @@ class _MenuLateralState extends State<MenuLateral> {
               );
             },
           ),
-          
-          // Item: Sair
+
+          if (_isInstituicao)
+            ListTile(
+              leading: Icon(Icons.store, color: Colors.green[700]),
+              title: Text('Gerenciar Pontos de Coleta'),
+              subtitle: Text('Adicionar ou editar locais'),
+              onTap: () async {
+                Navigator.pop(context); // Fecha o drawer
+                
+                // 2. O 'await' faz o código esperar você voltar da tela MeusPontosPage
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => MeusPontosPage()),
+                );
+
+                // 3. Quando você voltar, se a função existir, ela roda e atualiza o mapa
+                if (widget.onAtualizarMapa != null) {
+                  widget.onAtualizarMapa!();
+                }
+              },
+            ),
+
+          Divider(),
+
           ListTile(
             leading: Icon(Icons.exit_to_app, color: Colors.red),
             title: Text('Sair', style: TextStyle(color: Colors.red)),
