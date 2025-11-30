@@ -28,6 +28,11 @@ class LoginController {
 
       // DECODIFICA O TOKEN para ler os dados escondidos nele
       Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+      if (decodedToken.containsKey('id')) {
+        final userId = decodedToken['id'];
+        await _storage.write(key: 'userId', value: userId);
+        print("ID do usuário salvo: $userId");
+      }
 
       String role = '';
       
@@ -55,4 +60,15 @@ class LoginController {
       SnackBar(content: Text(mensagem), backgroundColor: Colors.red),
     );
   }
+   
+  Future<void> logout(BuildContext context) async {
+    // 1. Limpa o token e qualquer outro dado salvo (ex: userId)
+    await _storage.deleteAll(); 
+    Navigator.pushNamedAndRemoveUntil(
+      context, 
+      '/', // Nome da rota de Login definido no main.dart
+      (route) => false // Remove todas as rotas anteriores
+    );
+  }
+
 }

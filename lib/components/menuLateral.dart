@@ -1,30 +1,90 @@
 import 'package:flutter/material.dart';
-import '../view/EditarDadosPage.dart'; // Importação da tela de edição
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:donate/view/EditarDadosPage.dart';
+import 'package:donate/controllers/LoginController.dart';
+import 'package:donate/services/AuthService.dart';
 
-class MenuLateral extends StatelessWidget {
+class MenuLateral extends StatefulWidget {
+  @override
+  _MenuLateralState createState() => _MenuLateralState();
+}
+
+class _MenuLateralState extends State<MenuLateral> {
+  final LoginController _loginController = LoginController();
+  final AuthService _authService = AuthService();
+  final _storage = const FlutterSecureStorage();
+
+  // Variáveis para exibir no cabeçalho
+  String _nomeUsuario = "Carregando...";
+  String _emailUsuario = "...";
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarDadosUsuario();
+  }
+
+  Future<void> _carregarDadosUsuario() async {
+    try {
+      // 1. Recupera o Token e o ID salvos no login
+      String? token = await _storage.read(key: 'token');
+      String? userId = await _storage.read(key: 'userId'); // Certifique-se que salvou 'userId' no LoginController
+
+      if (token != null && userId != null) {
+        // 2. Chama a API para pegar os dados frescos
+        final dados = await _authService.getUsuario(userId, token);
+
+        // 3. Atualiza a tela (setState)
+        if (mounted) {
+          setState(() {
+            // O backend retorna: { "login": "...", "email": "...", ... }
+            _nomeUsuario = dados['login'] ?? "Usuário";
+            _emailUsuario = dados['email'] ?? "Sem email";
+          });
+        }
+      } else {
+        setState(() {
+          _nomeUsuario = "Usuário Deslogado";
+          _emailUsuario = "";
+        });
+      }
+    } catch (e) {
+      print("Erro ao carregar usuário no menu: $e");
+      if (mounted) {
+        setState(() {
+          _nomeUsuario = "Erro ao carregar";
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          // Cabeçalho do Menu (Dados do Usuário Mockados por enquanto)
+          // Cabeçalho com dados dinâmicos
           UserAccountsDrawerHeader(
-            accountName: Text("Usuário Teste"),
-            accountEmail: Text("teste@donate.com"),
+            accountName: Text(_nomeUsuario),
+            accountEmail: Text(_emailUsuario),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
-              child: Text("U", style: TextStyle(fontSize: 40.0)),
+              child: Text(
+                _nomeUsuario.isNotEmpty ? _nomeUsuario[0].toUpperCase() : "U",
+                style: TextStyle(fontSize: 40.0),
+              ),
             ),
             decoration: BoxDecoration(color: Colors.blue),
           ),
           
-          // Item de Menu: Editar Dados
+          // Item: Gerenciar Dados
           ListTile(
             leading: Icon(Icons.edit),
             title: Text('Gerenciar meus dados'),
+            subtitle: Text('nome, email, telefone...'),
             onTap: () {
-              Navigator.pop(context); // Fecha o menu
+              Navigator.pop(context);
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => EditarDadosPage()),
@@ -32,13 +92,12 @@ class MenuLateral extends StatelessWidget {
             },
           ),
           
-          // Item de Menu: Sair
+          // Item: Sair
           ListTile(
             leading: Icon(Icons.exit_to_app, color: Colors.red),
             title: Text('Sair', style: TextStyle(color: Colors.red)),
             onTap: () {
-              Navigator.pop(context);
-              // Adicione sua lógica de logout aqui futuramente
+              _loginController.logout(context);
             },
           ),
         ],

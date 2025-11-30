@@ -25,7 +25,7 @@ android {
         // TODO: Especifique seu ID de aplicação único.
         applicationId = "com.example.donate"
         
-        minSdk = flutter.minSdkVersion
+        minSdk = 21
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
