@@ -20,8 +20,8 @@ class MyTextField extends StatelessWidget {
     super.key,
     required this.controller,
     required this.labelText,
-    this.obscureText = false, // Por padrão, o texto não é escondido
-    this.bottomSpacing = 20.0, // Por padrão, o espaçamento é 20
+    this.obscureText = false, 
+    this.bottomSpacing = 20.0, 
   });
 
   @override

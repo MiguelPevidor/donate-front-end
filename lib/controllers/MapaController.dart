@@ -1,141 +1,119 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
 
-// Imports dos Models e Utils
-import 'package:donate/model/Item.dart'; // Do colega
 import '../model/PontoDeColeta.dart';
-import '../services/MapaService.dart'; // Do colega
+import '../model/Item.dart';
+import '../services/MapaService.dart';
+import '../services/PontoColetaService.dart';
 import '../util/GeradorBitmapDescriptor.dart';
 import '../util/localizador.dart';
+import 'SessionController.dart'; // <--- Importação crucial
 
 class MapaController extends ChangeNotifier {
-  // --- FUNCIONALIDADE DO COLEGA (Service) ---
-  final MapaService _service = MapaService();
+  final MapaService _mapaService = MapaService();
+  final PontoColetaService _pontoService = PontoColetaService();
+  
+  // Acesso ao Singleton de Sessão
+  final SessionController _session = SessionController();
 
   late GoogleMapController mapController;
   Set<Marker> markers = {};
-  
-  // Listas de dados
   List<PontoDeColeta> pontos = [];
-  List<Item> tiposItens = []; // Do colega (Lista de categorias para filtrar)
+  List<Item> tiposItens = [];
 
   final LatLng _posicaoInicial = const LatLng(-19.5393, -40.6305);
   LatLng obterPosicaoInicial() => _posicaoInicial;
 
   void onMapCreated(GoogleMapController controller) {
     mapController = controller;
-    centralizarNoUsuario(); 
+    centralizarNoUsuario();
   }
 
   Future<void> centralizarNoUsuario() async {
     try {
-      Position posicao = await Localizador.determinarPosicaoAtual();
-      
-      mapController.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: LatLng(posicao.latitude, posicao.longitude),
-            zoom: 16,
-          ),
-        ),
-      );
+      var posicao = await Localizador.determinarPosicaoAtual();
+      mapController.animateCamera(CameraUpdate.newLatLngZoom(
+          LatLng(posicao.latitude, posicao.longitude), 16));
     } catch (e) {
-      print("Erro ao obter localização: $e");
+      print("Erro localização: $e");
     }
   }
 
-  // --- MÉTODOS NOVOS DO COLEGA (Inicialização e Filtros) ---
-
+  // --- Inicialização Limpa e Inteligente ---
   Future<void> inicializarDados() async {
-    // 1. Carrega os chips (categorias)
-    tiposItens = await _service.buscarItens();
-    
-    // 2. Carrega os pontos iniciais (todos)
-    await buscarTodosPontos();
-    
-    notifyListeners();
-  }
-
-  Future<void> buscarTodosPontos() async {
-    pontos = await _service.buscarTodosPontos();
-    await _gerarMarkers(); // Chama a SUA função de markers corrigida
-    notifyListeners();
-  }
-
-  Future<void> buscarPontosPorFiltro(List<String> idsSelecionados) async {
-    if (idsSelecionados.isEmpty) {
-      await buscarTodosPontos();
-      return;
+    // 1. Carrega filtros
+    try {
+      tiposItens = await _mapaService.buscarItens();
+    } catch (e) {
+      print("Erro ao buscar itens: $e");
     }
-    pontos = await _service.buscarPontosPorFiltro(idsSelecionados);
-    await _gerarMarkers(); // Chama a SUA função de markers corrigida
+
+    // 2. Lógica de decisão baseada na Sessão (sem decodificar token aqui!)
+    if (_session.isInstituicao) {
+      // Se for instituição, vê só os seus pontos
+      // O userId já vem limpo do SessionController
+      pontos = await _pontoService.listarPorInstituicao(_session.userId ?? "");
+    } else {
+      // Se for doador ou anônimo, vê todos
+      pontos = await _mapaService.buscarTodosPontos();
+    }
+
+    await _gerarMarkers();
     notifyListeners();
   }
-
-  // --- SUA LÓGICA PRESERVADA (Geração de Markers com Endereço) ---
   
-  Future<void> _gerarMarkers() async {
-    Set<Marker> novosMarkers = {};
-    BitmapDescriptor icone;
+  /// NOVA LÓGICA: Verifica se precisa mostrar o alerta de cadastro
+  /// Retorna true se for instituição E não tiver pontos.
+  Future<bool> verificarSePrecisaCadastrarPonto() async {
+    // Se não estiver logado ou não for instituição, retorna false logo de cara
+    if (!_session.isLoggedIn || !_session.isInstituicao) {
+      return false;
+    }
 
     try {
-      icone = await GeradorBitmapDescriptor.gerarIcone(
-          Icons.location_on, Colors.green, size: 45.0);
+      // Se a lista de pontos estiver vazia, verificamos na API para ter certeza
+      if (pontos.isEmpty) {
+         var meusPontos = await _pontoService.listarPorInstituicao(_session.userId ?? "");
+         return meusPontos.isEmpty;
+      }
+      return false; // Se a lista não está vazia, é porque já tem pontos
     } catch (e) {
-      icone = BitmapDescriptor.defaultMarker;
+      print("Erro ao verificar pontos iniciais: $e");
+      return false;
     }
+  }
 
-    for (var ponto in pontos) {
-      // AQUI MANTIVE SUA LÓGICA: Acessa lat/long via 'endereco'
-      final double? lat = ponto.endereco.latitude;
-      final double? long = ponto.endereco.longitude;
+  Future<void> buscarPontosPorFiltro(List<String> ids) async {
+     if (ids.isEmpty) {
+       await inicializarDados();
+       return;
+     }
+     pontos = await _mapaService.buscarPontosPorFiltro(ids);
+     await _gerarMarkers();
+     notifyListeners();
+  }
 
-      if (lat != null && long != null && lat != 0.0 && long != 0.0 && ponto.id != null) {
-        final marker = Marker(
-          markerId: MarkerId(ponto.id!), // Usamos ! pois já checamos null acima
-          position: LatLng(lat, long),
-          icon: icone, 
-          infoWindow: InfoWindow(
-            snippet: ponto.horarioFuncionamento,
-            title: "Ponto de Coleta",
-          ),
-        );
-        novosMarkers.add(marker);
+  Future<void> _gerarMarkers() async {
+    Set<Marker> novos = {};
+    var icone = await GeradorBitmapDescriptor.gerarIcone(Icons.location_on, Colors.green);
+
+    for (var p in pontos) {
+      if (p.endereco.latitude != null && p.endereco.longitude != null) {
+        novos.add(Marker(
+          markerId: MarkerId(p.id ?? p.hashCode.toString()),
+          position: LatLng(p.endereco.latitude!, p.endereco.longitude!),
+          icon: icone,
+          onTap: () {
+             // O clique é gerido pela View, mas o marker precisa existir
+          }
+        ));
       }
     }
-    markers = novosMarkers;
+    markers = novos;
+    notifyListeners();
   }
-
-  // --- NAVEGAÇÃO (Mantendo sua lógica de verificação de nulos) ---
-
-  int _indexAtual = 0;
-  void avancarProximoMarker() {
-    if (pontos.isEmpty) return;
-    if (_indexAtual >= pontos.length) _indexAtual = 0;
-
-    final ponto = pontos[_indexAtual];
-    
-    // MANTIDA SUA LÓGICA DE ACESSO SEGURO
-    final double? lat = ponto.endereco.latitude;
-    final double? long = ponto.endereco.longitude;
-
-    if (lat != null && long != null && ponto.id != null) {
-      mapController.animateCamera(
-        CameraUpdate.newLatLngZoom(LatLng(lat, long), 16),
-      );
-      mapController.showMarkerInfoWindow(MarkerId(ponto.id!));
-    }
-    
-    _indexAtual++;
-  }
-
-  // Método auxiliar do colega (Deixei aqui caso precise, mas seu 'avancarProximoMarker' não usa ele)
+  
   void irParaPonto(double lat, double lng) {
-    mapController.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: LatLng(lat, lng), zoom: 18),
-      ),
-    );
+    mapController.animateCamera(CameraUpdate.newLatLngZoom(LatLng(lat, lng), 18));
   }
 }

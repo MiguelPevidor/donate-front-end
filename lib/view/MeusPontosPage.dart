@@ -62,7 +62,7 @@ class _MeusPontosPageState extends State<MeusPontosPage> {
                     ? ponto.endereco.logradouro 
                     : "Endereço sem rua",
                 
-                subtitle: "${ponto.horarioFuncionamento}\nCapacidade: ${ponto.capacidadeMaxima} itens",
+                subtitle: "${ponto.horarioFuncionamento}",
                 
                 icon: Icons.location_on,
                 iconColor: Colors.blueAccent,
