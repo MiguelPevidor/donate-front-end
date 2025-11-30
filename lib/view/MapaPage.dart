@@ -1,7 +1,8 @@
-import 'package:donate/components/menuLateral.dart';
 import 'package:donate/model/Item.dart'; // <--- IMPORTANTE: Importe seu Model Item
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart'; // Adicione este import
+import '../components/menuLateral.dart';
 import '../controllers/MapaController.dart';
 
 class MapaPage extends StatefulWidget {
@@ -15,6 +16,9 @@ class _MapaPageState extends State<MapaPage> {
   late MapaController _controle;
   late Future<void> _futureInicializacao;
   
+  // Variável para controlar se a bolinha azul deve aparecer
+  bool _localizacaoAtiva = false;
+
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _searchController = TextEditingController();
   final DraggableScrollableController _sheetController = DraggableScrollableController();
@@ -28,6 +32,25 @@ class _MapaPageState extends State<MapaPage> {
     super.initState();
     _controle = MapaController();
     _futureInicializacao = _controle.inicializarDados();
+    _verificarPermissoes(); // Verifica permissão ao iniciar
+  }
+
+  // Novo método para checar permissão e ativar a bolinha
+  Future<void> _verificarPermissoes() async {
+    LocationPermission permissao = await Geolocator.checkPermission();
+    
+    if (permissao == LocationPermission.denied) {
+      permissao = await Geolocator.requestPermission();
+    }
+
+    if (permissao == LocationPermission.whileInUse || 
+        permissao == LocationPermission.always) {
+      setState(() {
+        _localizacaoAtiva = true; // Ativa a bolinha azul
+      });
+      // Opcional: Centraliza no usuário assim que tiver permissão
+      _controle.centralizarNoUsuario();
+    }
   }
 
   // O filtro agora recebe o ID do item
@@ -66,14 +89,15 @@ class _MapaPageState extends State<MapaPage> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          
+          if (snapshot.hasData) {
+             _controle.markers = snapshot.data!.toSet();
+          }
+          
           return _conteudoMapa();
         },
       ),
     );
-  }
-
-  void _onMapCreated(GoogleMapController controller) {
-    _controle.mapController = controller;
   }
 
   Widget _conteudoMapa() {
@@ -85,23 +109,31 @@ class _MapaPageState extends State<MapaPage> {
             target: _controle.obterPosicaoInicial(),
             zoom: 15,
           ),
-          markers: _controle.markers,
-          onMapCreated: _onMapCreated,
+          markers: _controle.markers ?? {},
+          onMapCreated: _controle.onMapCreated,
           zoomControlsEnabled: false,
-          myLocationEnabled: true,
-          myLocationButtonEnabled: false,
-          padding: const EdgeInsets.only(bottom: 100),
+          
+          // --- AQUI ESTÁ O SEGREDO ---
+          // Se for false, o Google Maps nem tenta desenhar a camada
+          // Se for true, ele desenha a bolinha azul
+          myLocationEnabled: _localizacaoAtiva, 
+          // ---------------------------
+          
+          myLocationButtonEnabled: false, 
         ),
 
         // 2. BOTÃO MENU
         Positioned(
-          top: 50, left: 20,
+          top: 50,
+          left: 20,
           child: FloatingActionButton(
             heroTag: "btnMenu",
             backgroundColor: Colors.white,
             foregroundColor: Colors.black,
-            child: const Icon(Icons.menu),
-            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            child: Icon(Icons.menu),
+            onPressed: () {
+              _scaffoldKey.currentState?.openDrawer();
+            },
           ),
         ),
 
@@ -109,10 +141,30 @@ class _MapaPageState extends State<MapaPage> {
         Positioned(
           bottom: 120, 
           right: 20,
-          child: FloatingActionButton(
-            heroTag: "btnNext",
-            child: const Icon(Icons.navigate_next),
-            onPressed: () => _controle.avancarProximoMarker(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton(
+                heroTag: "btnMeuLocal",
+                backgroundColor: Colors.blueAccent,
+                child: Icon(Icons.my_location, color: Colors.white),
+                onPressed: () {
+                  _controle.centralizarNoUsuario();
+                },
+              ),
+              
+              SizedBox(height: 15),
+
+              FloatingActionButton(
+                heroTag: "btnNext",
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                child: Icon(Icons.navigate_next),
+                onPressed: () {
+                  _controle.avancarProximoMarker();
+                },
+              ),
+            ],
           ),
         ),
 

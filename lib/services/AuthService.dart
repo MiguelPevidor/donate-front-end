@@ -32,4 +32,23 @@ class AuthService {
       rethrow; // Passa o erro para o Controller tratar
     }
   }
+
+
+  Future<Map<String, dynamic>> getUsuario(String id, String token) async {
+    final url = Uri.parse('${Constants.baseUrl}/usuarios/$id');
+
+    final response = await http.get(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token", // Envia o token para autenticação
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body); // Retorna { "id":..., "login":..., "email":... }
+    } else {
+      throw Exception("Falha ao carregar dados do usuário");
+    }
+  }
 }

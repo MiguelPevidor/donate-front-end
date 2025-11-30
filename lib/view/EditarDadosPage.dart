@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../components/MyTextField.dart'; 
+import '../components/MyTextField.dart';
+import '../controllers/EditarDadosController.dart';
 
 class EditarDadosPage extends StatefulWidget {
   @override
@@ -7,16 +8,12 @@ class EditarDadosPage extends StatefulWidget {
 }
 
 class _EditarDadosPageState extends State<EditarDadosPage> {
-  final _nomeController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _telefoneController = TextEditingController();
+  final EditarDadosController _controller = EditarDadosController();
 
   @override
   void initState() {
     super.initState();
-    // Dados simulados
-    _nomeController.text = "Fulano de Tal";
-    _emailController.text = "fulano@teste.com";
+    _controller.carregarDados(context);
   }
 
   @override
@@ -25,52 +22,92 @@ class _EditarDadosPageState extends State<EditarDadosPage> {
       appBar: AppBar(
         title: Text("Gerenciar Dados"),
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Center(
-              child: CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.grey[300],
-                child: Icon(Icons.person, size: 50, color: Colors.grey[600]),
-              ),
-            ),
-            SizedBox(height: 20),
+      body: ValueListenableBuilder<bool>(
+        valueListenable: _controller.isLoading,
+        builder: (context, isLoading, child) {
+          if (isLoading) {
+            return Center(child: CircularProgressIndicator());
+          }
 
-            MyTextField(
-              controller: _nomeController,
-              labelText: 'Nome Completo', 
-              obscureText: false,
-            ),
-            
-            MyTextField(
-              controller: _emailController,
-              labelText: 'E-mail',
-              obscureText: false,
-            ),
+          bool isInstituicao = _controller.userRole?.toUpperCase().contains('INSTITUICAO') ?? false;
+          String labelExtra = isInstituicao ? 'Missão' : 'CPF';
+          
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Center(
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.grey[300],
+                    child: Icon(
+                      isInstituicao ? Icons.apartment : Icons.person, 
+                      size: 50, 
+                      color: Colors.grey[600]
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
 
-            MyTextField(
-              controller: _telefoneController,
-              labelText: 'Telefone',
-              obscureText: false,
+                MyTextField(
+                  controller: _controller.nomeController,
+                  labelText: isInstituicao ? 'Nome da Instituição' : 'Nome Completo',
+                  obscureText: false,
+                ),
+
+                MyTextField(
+                  controller: _controller.emailController,
+                  labelText: 'E-mail',
+                  obscureText: false,
+                ),
+
+                MyTextField(
+                  controller: _controller.telefoneController,
+                  labelText: 'Telefone',
+                  obscureText: false,
+                ),
+
+                // --- NOVOS CAMPOS ---
+                MyTextField(
+                  controller: _controller.loginController,
+                  labelText: 'Login (Usuário)',
+                  obscureText: false,
+                ),
+
+                MyTextField(
+                  controller: _controller.senhaController,
+                  labelText: 'Nova Senha',
+                  obscureText: true, // Senha oculta
+                ),
+                // --------------------
+
+                MyTextField(
+                  controller: _controller.extraController,
+                  labelText: labelExtra,
+                  obscureText: false,
+                ),
+
+                if (isInstituicao)
+                  MyTextField(
+                    controller: _controller.documentoController,
+                    labelText: 'CNPJ',
+                    obscureText: false,
+                  ),
+
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => _controller.salvarDados(context),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: Size(double.infinity, 50),
+                    backgroundColor: Colors.blueAccent,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text("Salvar Alterações"),
+                ),
+              ],
             ),
-            
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Dados salvos com sucesso!')),
-                );
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                minimumSize: Size(double.infinity, 50),
-              ),
-              child: Text("Salvar Alterações"),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

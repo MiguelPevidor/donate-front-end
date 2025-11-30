@@ -1,6 +1,10 @@
 import 'package:donate/model/Item.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart'; // Importante para o Position
+
+import '../util/Constants.dart';
+import '../util/localizador.dart'; // Importe seu Localizador
 import '../model/PontoDeColeta.dart';
 import '../services/MapaService.dart';
 import '../util/GeradorBitmapDescriptor.dart';
@@ -18,6 +22,29 @@ class MapaController extends ChangeNotifier {
   final LatLng _posicaoInicial = const LatLng(-19.5393, -40.6305);
   LatLng obterPosicaoInicial() => _posicaoInicial;
 
+  // --- NOVO: Método para ser chamado quando o mapa for criado ---
+  void onMapCreated(GoogleMapController controller) {
+    mapController = controller;
+    centralizarNoUsuario(); // Tenta focar no usuário assim que o mapa abre
+  }
+
+  // --- NOVO: Lógica para mover a câmera para o usuário ---
+  Future<void> centralizarNoUsuario() async {
+    try {
+      Position posicao = await Localizador.determinarPosicaoAtual();
+      
+      mapController.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(posicao.latitude, posicao.longitude),
+            zoom: 16,
+          ),
+        ),
+      );
+    } catch (e) {
+      print("Erro ao obter localização: $e");
+      // Opcional: Mostrar um aviso na tela se falhar
+    }
   // --- INICIALIZAÇÃO ---
   // Carrega tudo que a tela precisa ao abrir
   Future<void> inicializarDados() async {
@@ -69,6 +96,7 @@ class MapaController extends ChangeNotifier {
           infoWindow: InfoWindow(
             title: ponto.nome,
             snippet: ponto.horarioFuncionamento,
+            title: "Ponto de Coleta", // Adicionei um título padrão se não tiver nome
           ),
         ));
       }

@@ -1,19 +1,47 @@
 import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-class Localizador{
-  static Future<LatLng?> obterLatitudeLongitudePorEndereco(String endereco) async{
+class Localizador {
+  
+  // 1. Método para pegar a posição atual (GPS)
+  static Future<Position> determinarPosicaoAtual() async {
+    bool servicoHabilitado;
+    LocationPermission permissao;
 
-    try{
+    // Verifica se o GPS está ligado
+    servicoHabilitado = await Geolocator.isLocationServiceEnabled();
+    if (!servicoHabilitado) {
+      return Future.error('Por favor, habilite a localização no celular.');
+    }
+
+    // Verifica permissões
+    permissao = await Geolocator.checkPermission();
+    if (permissao == LocationPermission.denied) {
+      permissao = await Geolocator.requestPermission();
+      if (permissao == LocationPermission.denied) {
+        return Future.error('Permissão de localização negada.');
+      }
+    }
+
+    if (permissao == LocationPermission.deniedForever) {
+      return Future.error('Permissão de localização negada permanentemente. Habilite nas configurações.');
+    }
+
+    // Retorna a posição real
+    return await Geolocator.getCurrentPosition();
+  }
+
+  // 2. Método auxiliar para converter Endereço -> Latitude/Longitude (Geocoding)
+  static Future<LatLng?> obterLatitudeLongitudePorEndereco(String endereco) async {
+    try {
       List<Location> locations = await locationFromAddress(endereco);
-      if((locations == null) || (locations.first == null)) return null;
-      else
+      if (locations.isNotEmpty) {
         return LatLng(locations.first.latitude, locations.first.longitude);
-    } on NoResultFoundException {
-      print("Endereço não encontrado");
+      }
       return null;
-    } on Exception catch (e) {
-      print("Erro desconhecido: $e");
+    } catch (e) {
+      print("Erro ao buscar endereço: $e");
       return null;
     }
   }

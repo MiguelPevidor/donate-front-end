@@ -23,7 +23,7 @@ class Instituicao {
   Map<String, dynamic> toJson() {
     return {
       'id': id, // Se for null, o Spring geralmente ignora no cadastro
-      'nome': nomeInstituicao,
+      'nomeInstituicao': nomeInstituicao,
       'missao': missao,
       'cnpj': cnpj,
       'telefone': telefone,
@@ -31,13 +31,14 @@ class Instituicao {
       'login': login,
       'senha': senha,
     };
+    
   }
 
   // Receber da API
   factory Instituicao.fromJson(Map<String, dynamic> json) {
     return Instituicao(
       id: json['id'],
-      nomeInstituicao: json['nome'], // Verifique se o backend manda 'nome' ou 'nomeInstituicao'
+      nomeInstituicao: json['nomeInstituicao'], // Verifique se o backend manda 'nome' ou 'nomeInstituicao'
       missao: json['missao'],
       cnpj: json['cnpj'],
       telefone: json['telefone'],
