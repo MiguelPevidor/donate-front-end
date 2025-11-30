@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../controllers/GerenciarPontosController.dart';
+import '../components/MyInfoCard.dart'; // Importando o novo componente
 import 'FormularioPontoPage.dart';
 
 class MeusPontosPage extends StatefulWidget {
@@ -21,59 +21,67 @@ class _MeusPontosPageState extends State<MeusPontosPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Meus Pontos de Coleta")),
+      
+      // Botão Flutuante para Adicionar Novo Ponto
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
         onPressed: () async {
-          // Vai para tela de criar
+          // Vai para tela de criar e espera voltar
           await Navigator.push(
             context, 
             MaterialPageRoute(builder: (context) => FormularioPontoPage(controller: _controller))
           );
+          // O controller recarrega automaticamente se você chamar carregarDados no retorno, 
+          // mas o método salvar já faz isso no controller.
         },
       ),
+      
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
-          if (_controller.isLoading) return Center(child: CircularProgressIndicator());
+          // 1. Loading
+          if (_controller.isLoading) {
+            return Center(child: CircularProgressIndicator());
+          }
           
+          // 2. Lista Vazia
           if (_controller.meusPontos.isEmpty) {
              return Center(child: Text("Nenhum ponto de coleta cadastrado."));
           }
 
+          // 3. Lista de Pontos
           return ListView.builder(
+            padding: EdgeInsets.only(top: 8, bottom: 80), // Espaço para não cobrir o botão +
             itemCount: _controller.meusPontos.length,
             itemBuilder: (context, index) {
               final ponto = _controller.meusPontos[index];
-              return Card(
-                margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                child: ListTile(
-                  leading: Icon(Icons.location_on, color: Colors.blue),
-                  title: Text(ponto.endereco.logradouro),
-                  subtitle: Text("${ponto.horarioFuncionamento}\nCapacidade: ${ponto.capacidadeMaxima}"),
-                  isThreeLine: true,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.edit, color: Colors.orange),
-                        onPressed: () {
-                           Navigator.push(
-                            context, 
-                            MaterialPageRoute(builder: (context) => FormularioPontoPage(
-                              controller: _controller, 
-                              pontoEdicao: ponto
-                            ))
-                          );
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _confirmarExclusao(ponto.id!),
-                      ),
-                    ],
-                  ),
-                ),
+              
+              // --- USO DO COMPONENTE GENÉRICO (CORREÇÃO) ---
+              return MyInfoCard(
+                title: ponto.endereco.logradouro.isNotEmpty 
+                    ? ponto.endereco.logradouro 
+                    : "Endereço sem rua",
+                
+                subtitle: "${ponto.horarioFuncionamento}\nCapacidade: ${ponto.capacidadeMaxima} itens",
+                
+                icon: Icons.location_on,
+                iconColor: Colors.blueAccent,
+                
+                // Ação de Editar
+                onEdit: () {
+                   Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (context) => FormularioPontoPage(
+                      controller: _controller, 
+                      pontoEdicao: ponto
+                    ))
+                  );
+                },
+                
+                // Ação de Excluir
+                onDelete: () => _confirmarExclusao(ponto.id!),
               );
+              // ---------------------------------------------
             },
           );
         },
@@ -86,9 +94,12 @@ class _MeusPontosPageState extends State<MeusPontosPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text("Excluir"),
-        content: Text("Tem certeza que deseja apagar este ponto?"),
+        content: Text("Tem certeza que deseja apagar este ponto de coleta?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text("Cancelar")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx), 
+            child: Text("Cancelar")
+          ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart'; // Para LatLng
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../services/PontoColetaService.dart';
 import '../model/PontoDeColeta.dart';
 import '../model/Item.dart';
 import '../model/Endereco.dart';
-import '../util/localizador.dart'; // Importe o localizador
+import '../util/localizador.dart';
 
 class GerenciarPontosController extends ChangeNotifier {
   final PontoColetaService _service = PontoColetaService();
@@ -31,7 +31,7 @@ class GerenciarPontosController extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print("Erro ao carregar: $e");
+      print("Erro ao carregar pontos: $e");
     } finally {
       isLoading = false;
       notifyListeners();
@@ -42,15 +42,16 @@ class GerenciarPontosController extends ChangeNotifier {
     try {
       todosItens = await _service.listarTodosItensDisponiveis();
       notifyListeners();
-    } catch (e) { print(e); }
+    } catch (e) {
+      print("Erro ao carregar itens: $e");
+    }
   }
 
-  // --- ATUALIZADO: Salvar com Geocoding Automático ---
   Future<bool> salvarPonto({
     String? id,
     required String horario,
     required String capacidade,
-    required Endereco enderecoDados, // Dados vindos do formulário (sem lat/long ainda)
+    required Endereco enderecoDados,
     required List<String> itensSelecionadosIds,
   }) async {
     if (instituicaoId == null) return false;
@@ -59,17 +60,31 @@ class GerenciarPontosController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Monta a string de busca (ex: "Av Paulista, 1000, Bela Vista, Sao Paulo - SP")
-      String buscaEndereco = 
-          "${enderecoDados.logradouro}, ${enderecoDados.numero}, "
-          "${enderecoDados.bairro}, ${enderecoDados.cidade} - ${enderecoDados.estado}";
+      // --- CORREÇÃO AQUI ---
+      // Monta lista removendo campos vazios para evitar ", , ,"
+      List<String> partes = [
+        enderecoDados.logradouro,
+        enderecoDados.numero.isNotEmpty ? enderecoDados.numero : "S/N",
+        enderecoDados.bairro,
+        enderecoDados.cidade,
+        enderecoDados.estado
+      ];
+      
+      // Junta tudo com vírgula e adiciona Brasil
+      String buscaEndereco = partes
+          .where((p) => p.trim().isNotEmpty)
+          .join(", ") + ", Brasil";
 
       print("Buscando coordenadas para: $buscaEndereco");
 
-      // 2. Tenta pegar a Lat/Long real
       LatLng? coords = await Localizador.obterCoordenadasPorEndereco(buscaEndereco);
       
-      // 3. Cria um novo objeto Endereco com as coordenadas descobertas (ou 0.0 se falhar)
+      if (coords == null) {
+        print("ALERTA: Geocoding falhou ou não encontrou o local.");
+      } else {
+        print("SUCESSO: Lat: ${coords.latitude}, Long: ${coords.longitude}");
+      }
+
       Endereco enderecoFinal = Endereco(
         logradouro: enderecoDados.logradouro,
         numero: enderecoDados.numero,
@@ -77,16 +92,15 @@ class GerenciarPontosController extends ChangeNotifier {
         cidade: enderecoDados.cidade,
         estado: enderecoDados.estado,
         cep: enderecoDados.cep,
-        latitude: coords?.latitude ?? 0.0,  // Preenche aqui!
-        longitude: coords?.longitude ?? 0.0, // Preenche aqui!
+        latitude: coords?.latitude ?? 0.0,
+        longitude: coords?.longitude ?? 0.0,
       );
 
-      // 4. Monta o JSON para enviar ao Java
       final requestBody = {
         'horarioFuncionamento': horario,
         'capacidadeMaxima': int.tryParse(capacidade) ?? 0,
         'instituicaoId': instituicaoId,
-        'endereco': enderecoFinal.toJson(), // Vai com lat/long preenchidos
+        'endereco': enderecoFinal.toJson(),
         'itensIds': itensSelecionadosIds
       };
 
@@ -100,7 +114,7 @@ class GerenciarPontosController extends ChangeNotifier {
       return true;
 
     } catch (e) {
-      print("Erro ao salvar: $e");
+      print("Erro ao salvar ponto: $e");
       return false;
     } finally {
       isLoading = false;
@@ -114,7 +128,9 @@ class GerenciarPontosController extends ChangeNotifier {
     try {
       await _service.deletarPonto(id);
       meusPontos.removeWhere((p) => p.id == id);
-    } catch (e) { print(e); } finally {
+    } catch (e) {
+      print("Erro ao deletar: $e");
+    } finally {
       isLoading = false;
       notifyListeners();
     }
