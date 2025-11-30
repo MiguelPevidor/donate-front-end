@@ -13,7 +13,6 @@ class _EditarDadosPageState extends State<EditarDadosPage> {
   @override
   void initState() {
     super.initState();
-    // Carrega os dados assim que a tela abre
     _controller.carregarDados(context);
   }
 
@@ -30,7 +29,6 @@ class _EditarDadosPageState extends State<EditarDadosPage> {
             return Center(child: CircularProgressIndicator());
           }
 
-          // Define rótulos baseados no tipo de usuário
           bool isInstituicao = _controller.userRole?.toUpperCase().contains('INSTITUICAO') ?? false;
           String labelExtra = isInstituicao ? 'Missão' : 'CPF';
           
@@ -69,20 +67,31 @@ class _EditarDadosPageState extends State<EditarDadosPage> {
                   obscureText: false,
                 ),
 
-                // Campo Dinâmico (CPF ou Missão)
+                // --- NOVOS CAMPOS ---
+                MyTextField(
+                  controller: _controller.loginController,
+                  labelText: 'Login (Usuário)',
+                  obscureText: false,
+                ),
+
+                MyTextField(
+                  controller: _controller.senhaController,
+                  labelText: 'Nova Senha',
+                  obscureText: true, // Senha oculta
+                ),
+                // --------------------
+
                 MyTextField(
                   controller: _controller.extraController,
                   labelText: labelExtra,
                   obscureText: false,
                 ),
 
-                // Campo extra apenas para Instituição (CNPJ)
                 if (isInstituicao)
                   MyTextField(
                     controller: _controller.documentoController,
                     labelText: 'CNPJ',
                     obscureText: false,
-                    // Geralmente CNPJ não se edita, talvez queira por readOnly: true no MyTextField se suportar
                   ),
 
                 SizedBox(height: 20),

@@ -82,6 +82,7 @@ class _MenuLateralState extends State<MenuLateral> {
           ListTile(
             leading: Icon(Icons.edit),
             title: Text('Gerenciar meus dados'),
+            subtitle: Text('nome, email, telefone...'),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(

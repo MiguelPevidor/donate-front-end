@@ -9,18 +9,21 @@ class EditarDadosController {
   final GerenciarDadosService _service = GerenciarDadosService();
   final _storage = const FlutterSecureStorage();
 
-  // Controladores de texto
+  // Controladores de texto existentes
   final nomeController = TextEditingController();
   final emailController = TextEditingController();
   final telefoneController = TextEditingController();
-  final extraController = TextEditingController(); // CPF (Doador) ou Missão (Instituição)
-  final documentoController = TextEditingController(); // CNPJ (Instituição)
+  final extraController = TextEditingController(); // CPF ou Missão
+  final documentoController = TextEditingController(); // CNPJ
+  
+  // NOVOS CONTROLADORES
+  final loginController = TextEditingController();
+  final senhaController = TextEditingController();
 
   ValueNotifier<bool> isLoading = ValueNotifier<bool>(true);
   String? userId;
   String? userRole;
   
-  // Guardar objetos originais para manter dados não editáveis (como login)
   Doador? _doadorAtual;
   Instituicao? _instituicaoAtual;
 
@@ -32,29 +35,34 @@ class EditarDadosController {
 
       Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
       
-      // Ajuste aqui conforme a chave que você usa no Backend para o ID
       userId = decodedToken['id'] ?? decodedToken['userId'] ?? decodedToken['sub']; 
-      userRole = decodedToken['role']; // 'DOADOR' ou 'INSTITUICAO' (verifique se é maiúsculo ou minúsculo no token)
+      userRole = decodedToken['role'];
 
       if (userId == null) throw Exception("ID do usuário não encontrado no token");
 
-      // Normalizando a role para comparação (maiúsculo)
       String roleUpper = userRole?.toUpperCase() ?? '';
 
-      if (roleUpper == 'DOADOR' || roleUpper == 'ROLE_DOADOR') {
+      if (roleUpper.contains('DOADOR')) {
         _doadorAtual = await _service.buscarDoador(userId!);
+        
+        // Preenche os campos
         nomeController.text = _doadorAtual!.nome;
         emailController.text = _doadorAtual!.email;
         telefoneController.text = _doadorAtual!.telefone;
-        extraController.text = _doadorAtual!.cpf; // Usando extra para CPF
+        extraController.text = _doadorAtual!.cpf;
+        loginController.text = _doadorAtual!.login; // Carrega o Login
+        // Senha não carregamos por segurança (fica vazia)
       } 
-      else if (roleUpper == 'INSTITUICAO' || roleUpper == 'ROLE_INSTITUICAO') {
+      else if (roleUpper.contains('INSTITUICAO')) {
         _instituicaoAtual = await _service.buscarInstituicao(userId!);
+        
+        // Preenche os campos
         nomeController.text = _instituicaoAtual!.nomeInstituicao;
         emailController.text = _instituicaoAtual!.email;
         telefoneController.text = _instituicaoAtual!.telefone;
-        extraController.text = _instituicaoAtual!.missao; // Usando extra para Missão
+        extraController.text = _instituicaoAtual!.missao;
         documentoController.text = _instituicaoAtual!.cnpj;
+        loginController.text = _instituicaoAtual!.login; // Carrega o Login
       }
       
     } catch (e) {
@@ -72,17 +80,20 @@ class EditarDadosController {
 
     try {
       String roleUpper = userRole?.toUpperCase() ?? '';
+      
+      // Lógica da senha: Se estiver vazia, envia null (para não alterar)
+      // Se tiver texto, envia a nova senha
+      String? novaSenha = senhaController.text.isEmpty ? null : senhaController.text;
 
       if (roleUpper.contains('DOADOR')) {
-        // Monta objeto atualizado mantendo o que não mudou (login, senha null)
         Doador doadorEditado = Doador(
           id: userId,
           nome: nomeController.text,
           email: emailController.text,
           telefone: telefoneController.text,
-          cpf: extraController.text, // CPF
-          login: _doadorAtual?.login ?? '', // Login geralmente não muda na edição simples
-          senha: null, // Não enviamos senha se não for alterar
+          cpf: extraController.text,
+          login: loginController.text, // Login editável
+          senha: novaSenha, // Nova senha ou null
         );
         await _service.atualizarDoador(userId!, doadorEditado);
       } 
@@ -92,10 +103,10 @@ class EditarDadosController {
           nomeInstituicao: nomeController.text,
           email: emailController.text,
           telefone: telefoneController.text,
-          missao: extraController.text, // Missão
-          cnpj: documentoController.text, // CNPJ
-          login: _instituicaoAtual?.login ?? '',
-          senha: null,
+          missao: extraController.text,
+          cnpj: documentoController.text,
+          login: loginController.text, // Login editável
+          senha: novaSenha, // Nova senha ou null
         );
         await _service.atualizarInstituicao(userId!, instituicaoEditada);
       }
@@ -103,7 +114,7 @@ class EditarDadosController {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Dados atualizados com sucesso!"), backgroundColor: Colors.green),
       );
-      Navigator.pop(context); // Volta para a tela anterior
+      Navigator.pop(context);
 
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

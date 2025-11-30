@@ -47,7 +47,7 @@ class MapaController extends ChangeNotifier {
        icone = await GeradorBitmapDescriptor.gerarIcone(
          Icons.location_on, 
          Colors.green, 
-         size: 45.0 
+         size: 85.0 
        );
     } catch (e) {
        icone = BitmapDescriptor.defaultMarker;

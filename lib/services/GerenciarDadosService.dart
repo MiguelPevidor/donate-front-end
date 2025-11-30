@@ -44,7 +44,7 @@ class GerenciarDadosService {
 
   // --- INSTITUIÇÃO ---
   Future<Instituicao> buscarInstituicao(String id) async {
-    final url = Uri.parse('${Constants.baseUrl}/usuario/listar-por-id/$id');
+    final url = Uri.parse('${Constants.baseUrl}/instituicoes/$id');
     final response = await http.get(url, headers: await _getHeaders());
 
     if (response.statusCode == 200) {
@@ -55,7 +55,7 @@ class GerenciarDadosService {
   }
 
   Future<void> atualizarInstituicao(String id, Instituicao instituicao) async {
-    final url = Uri.parse('${Constants.baseUrl}/usuario/listar-por-id/$id');
+    final url = Uri.parse('${Constants.baseUrl}/instituicoes/$id');
     final response = await http.put(
       url,
       headers: await _getHeaders(),

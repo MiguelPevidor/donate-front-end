@@ -16,7 +16,7 @@ class _LoginPageState extends State<LoginPage> {
   final LoginController _loginController = LoginController();
 
     // TextControllers
-    final _emailTextController = TextEditingController();
+    final _loginTextController = TextEditingController();
     final _passwordTextController = TextEditingController();
 
   @override
@@ -69,8 +69,8 @@ class _LoginPageState extends State<LoginPage> {
 
                 //campo de entrada do email
                 MyTextField(
-                    controller: _emailTextController,
-                    labelText: "Email"
+                    controller: _loginTextController,
+                    labelText: "Login"
                 ),
 
                 //campo de entrada da senha
@@ -150,7 +150,7 @@ class _LoginPageState extends State<LoginPage> {
                       // CHAMA O MÉTODO DO CONTROLLER
                       _loginController.logar(
                         context,
-                        _emailTextController.text,
+                        _loginTextController.text,
                         _passwordTextController.text,
                       );
                     },
