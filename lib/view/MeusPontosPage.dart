@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../controllers/GerenciarPontosController.dart';
-import '../components/MyInfoCard.dart'; // Importando o novo componente
+import '../components/MyInfoCard.dart'; 
 import 'FormularioPontoPage.dart';
 
 class MeusPontosPage extends StatefulWidget {
@@ -22,7 +22,6 @@ class _MeusPontosPageState extends State<MeusPontosPage> {
     return Scaffold(
       appBar: AppBar(title: Text("Meus Pontos de Coleta")),
       
-      // Botão Flutuante para Adicionar Novo Ponto
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
         onPressed: () async {
@@ -31,8 +30,7 @@ class _MeusPontosPageState extends State<MeusPontosPage> {
             context, 
             MaterialPageRoute(builder: (context) => FormularioPontoPage(controller: _controller))
           );
-          // O controller recarrega automaticamente se você chamar carregarDados no retorno, 
-          // mas o método salvar já faz isso no controller.
+         
         },
       ),
       
