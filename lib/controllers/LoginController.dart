@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:jwt_decoder/jwt_decoder.dart'; // <--- Importe aqui
 import 'package:donate/services/AuthService.dart';
+import 'package:donate/controllers/SessionController.dart'; // <--- Importe o novo controller
 
 class LoginController {
   final AuthService _authService = AuthService();
-  final _storage = const FlutterSecureStorage();
+  // Removemos o FlutterSecureStorage daqui, pois o SessionController já cuida disso
 
   ValueNotifier<bool> isLoading = ValueNotifier<bool>(false);
 
@@ -18,34 +17,17 @@ class LoginController {
     isLoading.value = true;
 
     try {
-      // Chama a API e recebe o JSON (Ex: { "token": "eyJh..." })
+      // 1. Chama a API
       final resultado = await _authService.login(email, password);
-      
-      final token = resultado['token']; // O token JWT criptografado
+      final token = resultado['token'];
 
-      //  Salva o Token seguro
-      await _storage.write(key: 'token', value: token);
+      // 2. Usa o SessionController para salvar e decodificar
+      await SessionController().login(token);
 
-      // DECODIFICA O TOKEN para ler os dados escondidos nele
-      Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-      if (decodedToken.containsKey('id')) {
-        final userId = decodedToken['id'];
-        await _storage.write(key: 'userId', value: userId);
-        print("ID do usuário salvo: $userId");
-      }
+      // Debug (opcional)
+      print("Login Sucesso. Usuário: ${SessionController().userId} | Role: ${SessionController().userRole}");
 
-      String role = '';
-      
-      if (decodedToken.containsKey('role')) {
-        role = decodedToken['role']; 
-      }
-
-      // Para debugar 
-      print("Token Decodificado: $decodedToken"); 
-      print("Role encontrada: $role");
-
-
-      // direciona para a homePage
+      // 3. Navegação
       Navigator.pushReplacementNamed(context, "/homePage"); 
 
     } catch (e) {
@@ -62,13 +44,13 @@ class LoginController {
   }
    
   Future<void> logout(BuildContext context) async {
-    // 1. Limpa o token e qualquer outro dado salvo (ex: userId)
-    await _storage.deleteAll(); 
+    // Chama o logout centralizado
+    await SessionController().logout();
+    
     Navigator.pushNamedAndRemoveUntil(
       context, 
-      '/', // Nome da rota de Login definido no main.dart
-      (route) => false // Remove todas as rotas anteriores
+      '/', 
+      (route) => false 
     );
   }
-
 }

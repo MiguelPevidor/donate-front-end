@@ -4,6 +4,7 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../services/PontoColetaService.dart';
+import '../services/MapaService.dart'; // IMPORTANTE: Importar o MapaService
 import '../model/PontoDeColeta.dart';
 import '../model/Item.dart';
 import '../model/Endereco.dart';
@@ -11,6 +12,7 @@ import '../util/localizador.dart';
 
 class GerenciarPontosController extends ChangeNotifier {
   final PontoColetaService _service = PontoColetaService();
+  final MapaService _mapaService = MapaService(); // Instancia o MapaService
   final _storage = const FlutterSecureStorage();
 
   List<PontoDeColeta> meusPontos = [];
@@ -26,6 +28,8 @@ class GerenciarPontosController extends ChangeNotifier {
       if (token != null) {
         Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
         instituicaoId = decodedToken['id'] ?? decodedToken['userId'] ?? decodedToken['sub'];
+        
+        // Regra: Mostrar apenas pontos da instituição logada
         if (instituicaoId != null) {
           meusPontos = await _service.listarPorInstituicao(instituicaoId!);
         }
@@ -38,9 +42,11 @@ class GerenciarPontosController extends ChangeNotifier {
     }
   }
 
+  // Carrega itens usando o método do MapaService que você pediu
   Future<void> carregarItens() async {
     try {
-      todosItens = await _service.listarTodosItensDisponiveis();
+      // Usa o método existente no MapaService
+      todosItens = await _mapaService.buscarItens();
       notifyListeners();
     } catch (e) {
       print("Erro ao carregar itens: $e");
@@ -49,8 +55,8 @@ class GerenciarPontosController extends ChangeNotifier {
 
   Future<bool> salvarPonto({
     String? id,
+    required String nome, // Novo parâmetro
     required String horario,
-    required String capacidade,
     required Endereco enderecoDados,
     required List<String> itensSelecionadosIds,
   }) async {
@@ -60,8 +66,6 @@ class GerenciarPontosController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // --- CORREÇÃO AQUI ---
-      // Monta lista removendo campos vazios para evitar ", , ,"
       List<String> partes = [
         enderecoDados.logradouro,
         enderecoDados.numero.isNotEmpty ? enderecoDados.numero : "S/N",
@@ -69,21 +73,8 @@ class GerenciarPontosController extends ChangeNotifier {
         enderecoDados.cidade,
         enderecoDados.estado
       ];
-      
-      // Junta tudo com vírgula e adiciona Brasil
-      String buscaEndereco = partes
-          .where((p) => p.trim().isNotEmpty)
-          .join(", ") + ", Brasil";
-
-      print("Buscando coordenadas para: $buscaEndereco");
-
+      String buscaEndereco = partes.where((p) => p.trim().isNotEmpty).join(", ") + ", Brasil";
       LatLng? coords = await Localizador.obterCoordenadasPorEndereco(buscaEndereco);
-      
-      if (coords == null) {
-        print("ALERTA: Geocoding falhou ou não encontrou o local.");
-      } else {
-        print("SUCESSO: Lat: ${coords.latitude}, Long: ${coords.longitude}");
-      }
 
       Endereco enderecoFinal = Endereco(
         logradouro: enderecoDados.logradouro,
@@ -96,9 +87,11 @@ class GerenciarPontosController extends ChangeNotifier {
         longitude: coords?.longitude ?? 0.0,
       );
 
+      // 2. Monta o JSON atualizado
       final requestBody = {
+        'nome': nome,
         'horarioFuncionamento': horario,
-        'capacidadeMaxima': int.tryParse(capacidade) ?? 0,
+        // 'capacidadeMaxima': removido
         'instituicaoId': instituicaoId,
         'endereco': enderecoFinal.toJson(),
         'itensIds': itensSelecionadosIds

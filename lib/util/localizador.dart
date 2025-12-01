@@ -1,12 +1,11 @@
-import 'package:geocoding/geocoding.dart'; // PACOTE NECESSÁRIO
+import 'package:geocoding/geocoding.dart'; 
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart'; // <--- Importe o url_launcher aqui
 
 class Localizador {
   
   static Future<Position> determinarPosicaoAtual() async {
-    // ... (seu código existente de GPS) ...
-    // Vou resumir aqui para focar na novidade:
     bool servicoHabilitado = await Geolocator.isLocationServiceEnabled();
     if (!servicoHabilitado) return Future.error('GPS desabilitado.');
     
@@ -18,7 +17,7 @@ class Localizador {
     return await Geolocator.getCurrentPosition();
   }
 
-  // --- NOVO MÉTODO: Geocoding (Texto -> Latitude/Longitude) ---
+  // --- Geocoding (Texto -> Latitude/Longitude) ---
   static Future<LatLng?> obterCoordenadasPorEndereco(String enderecoCompleto) async {
     try {
       List<Location> locais = await locationFromAddress(enderecoCompleto);
@@ -29,5 +28,21 @@ class Localizador {
       print("Erro no Geocoding: $e");
     }
     return null;
+  }
+
+  // --- NOVO MÉTODO: Abrir App de Mapas Externo ---
+  static Future<void> abrirGoogleMaps(double lat, double long) async {
+    final Uri url = Uri.parse('google.navigation:q=$lat,$long&mode=d');
+    
+    try {
+      if (!await launchUrl(url)) {
+        // Se falhar (ex: app não instalado), abre no navegador
+        // Corrigi a URL para o padrão web oficial do Google Maps
+        final Uri webUrl = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$long');
+        await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      print("Erro ao abrir mapa: $e");
+    }
   }
 }

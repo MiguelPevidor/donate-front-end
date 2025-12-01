@@ -2,25 +2,19 @@ import 'Endereco.dart';
 import 'Item.dart';
 
 class PontoDeColeta {
-  // Mantemos String? (nullable) para permitir criar pontos novos (sem ID ainda)
   final String? id;
+  final String nome; // Novo campo
   final String horarioFuncionamento;
-  final int capacidadeMaxima;
-  final int? capacidadeAtual;
+  // Capacidade removida
   
-  // Mantemos o objeto Endereco completo (essencial para o Geocoding e edição)
   final Endereco endereco;
-  
-  // Mantemos a lista de itens (essencial para o filtro e cadastro)
   final List<Item> itensAceitos;
-  
   final String? instituicaoId;
 
   PontoDeColeta({
     this.id,
+    required this.nome,
     required this.horarioFuncionamento,
-    required this.capacidadeMaxima,
-    this.capacidadeAtual,
     required this.endereco,
     required this.itensAceitos,
     this.instituicaoId,
@@ -31,26 +25,21 @@ class PontoDeColeta {
     List<Item> itens = listaItens.map((i) => Item.fromJson(i)).toList();
 
     return PontoDeColeta(
-      id: json['id']?.toString(), // Garante conversão segura para String
+      id: json['id']?.toString(),
+      nome: json['nome'] ?? 'Ponto de Coleta', // Fallback se o backend antigo mandar null
       horarioFuncionamento: json['horarioFuncionamento'] ?? 'Horário não informado',
-      capacidadeMaxima: json['capacidadeMaxima'] ?? 0,
-      capacidadeAtual: json['capacidadeAtual'],
-      
-      // Mapeia o objeto Endereco completo
       endereco: Endereco.fromJson(json['endereco'] ?? {}),
-      
       itensAceitos: itens,
       instituicaoId: json['instituicaoId'],
     );
   }
 
-  // Método essencial para o seu Formulário de Cadastro enviar os dados
   Map<String, dynamic> toRequestJson(List<String> itensIdsSelecionados) {
     return {
+      'nome': nome,
       'horarioFuncionamento': horarioFuncionamento,
-      'capacidadeMaxima': capacidadeMaxima,
       'instituicaoId': instituicaoId,
-      'endereco': endereco.toJson(), // Envia o endereço com lat/long
+      'endereco': endereco.toJson(),
       'itensIds': itensIdsSelecionados, 
     };
   }

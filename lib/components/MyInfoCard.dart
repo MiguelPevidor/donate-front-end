@@ -6,7 +6,6 @@ class MyInfoCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   
-  // Funções opcionais (pode ser null se você quiser usar o card apenas para exibir)
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
@@ -23,9 +22,9 @@ class MyInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 3, // Sombra leve
+      elevation: 3, 
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10), // Bordas arredondadas
+        borderRadius: BorderRadius.circular(10), 
       ),
       margin: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Padding(

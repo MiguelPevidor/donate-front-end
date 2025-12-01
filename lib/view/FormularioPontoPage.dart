@@ -8,7 +8,7 @@ class FormularioPontoPage extends StatefulWidget {
   final GerenciarPontosController controller;
   final PontoDeColeta? pontoEdicao;
 
-  const FormularioPontoPage({required this.controller, this.pontoEdicao});
+  const FormularioPontoPage({Key? key, required this.controller, this.pontoEdicao}) : super(key: key);
 
   @override
   _FormularioPontoPageState createState() => _FormularioPontoPageState();
@@ -16,9 +16,10 @@ class FormularioPontoPage extends StatefulWidget {
 
 class _FormularioPontoPageState extends State<FormularioPontoPage> {
   final _formKey = GlobalKey<FormState>();
-
+  
+  final _nomeCtrl = TextEditingController(); // Novo Controller
   final _horarioCtrl = TextEditingController();
-  final _capacidadeCtrl = TextEditingController();
+  // Removido: _capacidadeCtrl
   
   final _ruaCtrl = TextEditingController();
   final _numCtrl = TextEditingController();
@@ -32,12 +33,13 @@ class _FormularioPontoPageState extends State<FormularioPontoPage> {
   @override
   void initState() {
     super.initState();
+    // Busca itens do banco (não mais mockados)
     widget.controller.carregarItens();
 
     if (widget.pontoEdicao != null) {
       final p = widget.pontoEdicao!;
+      _nomeCtrl.text = p.nome;
       _horarioCtrl.text = p.horarioFuncionamento;
-      _capacidadeCtrl.text = p.capacidadeMaxima.toString();
       
       _ruaCtrl.text = p.endereco.logradouro;
       _numCtrl.text = p.endereco.numero;
@@ -60,18 +62,23 @@ class _FormularioPontoPageState extends State<FormularioPontoPage> {
           key: _formKey,
           child: Column(
             children: [
-               Text("Endereço do Ponto", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+               Text("Dados do Ponto", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                SizedBox(height: 10),
                
-               // CEP e Rua
+               // Novo Campo: Nome
+               MyTextField(controller: _nomeCtrl, labelText: "Nome do Local (Ex: Sede)", obscureText: false),
+               MyTextField(controller: _horarioCtrl, labelText: "Horário (ex: 08:00 - 18:00)", obscureText: false),
+               // Capacidade removida
+
+               SizedBox(height: 20),
+               Text("Endereço", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+               
                MyTextField(controller: _cepCtrl, labelText: "CEP", obscureText: false),
                Row(children: [
                   Expanded(child: MyTextField(controller: _ruaCtrl, labelText: "Rua", obscureText: false)),
                   SizedBox(width: 10),
                   Expanded(flex: 0, child: Container(width: 80, child: MyTextField(controller: _numCtrl, labelText: "Nº", obscureText: false))),
                ]),
-               
-               // Bairro, Cidade, Estado
                MyTextField(controller: _bairroCtrl, labelText: "Bairro", obscureText: false),
                Row(children: [
                   Expanded(child: MyTextField(controller: _cidadeCtrl, labelText: "Cidade", obscureText: false)),
@@ -80,17 +87,18 @@ class _FormularioPontoPageState extends State<FormularioPontoPage> {
                ]),
 
                SizedBox(height: 20),
-               Text("Detalhes", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-               MyTextField(controller: _horarioCtrl, labelText: "Horário (ex: 08:00 - 18:00)", obscureText: false),
-               MyTextField(controller: _capacidadeCtrl, labelText: "Capacidade (Kg ou Qtd)", obscureText: false),
-
-               SizedBox(height: 20),
-               Text("Quais itens este ponto aceita?", style: TextStyle(fontSize: 16)),
+               Text("Itens Aceitos", style: TextStyle(fontSize: 16)),
                
-               // Chips para seleção de itens
+               // Lista dinâmica vinda do banco
                AnimatedBuilder(
                  animation: widget.controller,
                  builder: (context, _) {
+                   if (widget.controller.todosItens.isEmpty) {
+                     return Padding(
+                       padding: const EdgeInsets.all(8.0),
+                       child: Text("Carregando itens..."),
+                     );
+                   }
                    return Wrap(
                     spacing: 8.0,
                     children: widget.controller.todosItens.map((item) {
@@ -121,8 +129,6 @@ class _FormularioPontoPageState extends State<FormularioPontoPage> {
                     : Text("Salvar Ponto"),
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      
-                      // Cria objeto endereço apenas com os textos
                       Endereco end = Endereco(
                         logradouro: _ruaCtrl.text,
                         numero: _numCtrl.text,
@@ -130,23 +136,20 @@ class _FormularioPontoPageState extends State<FormularioPontoPage> {
                         cidade: _cidadeCtrl.text,
                         estado: _estadoCtrl.text,
                         cep: _cepCtrl.text,
-                        // latitude e longitude deixamos null ou 0.0 aqui
-                        // O controller vai preencher!
                       );
 
                       bool sucesso = await widget.controller.salvarPonto(
                         id: widget.pontoEdicao?.id,
+                        nome: _nomeCtrl.text, // Envia nome
                         horario: _horarioCtrl.text,
-                        capacidade: _capacidadeCtrl.text,
-                        enderecoDados: end, // Envia para o controller processar
+                        enderecoDados: end,
                         itensSelecionadosIds: _itensSelecionados
                       );
 
                       if (sucesso) {
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Ponto salvo com sucesso!"), backgroundColor: Colors.green));
                       } else {
-                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro ao salvar. Verifique o endereço."), backgroundColor: Colors.red));
+                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro ao salvar.")));
                       }
                     }
                   },

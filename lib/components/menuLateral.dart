@@ -9,14 +9,11 @@ import '../services/AuthService.dart';
 class MenuLateral extends StatefulWidget {
   // 1. Adicionamos esta variável para receber a função de atualização
   final VoidCallback? onAtualizarMapa;
-
-  // Construtor atualizado
   const MenuLateral({Key? key, this.onAtualizarMapa}) : super(key: key);
 
   @override
   _MenuLateralState createState() => _MenuLateralState();
 }
-
 class _MenuLateralState extends State<MenuLateral> {
   final LoginController _loginController = LoginController();
   final AuthService _authService = AuthService();
@@ -111,7 +108,6 @@ class _MenuLateralState extends State<MenuLateral> {
               onTap: () async {
                 Navigator.pop(context); // Fecha o drawer
                 
-                // 2. O 'await' faz o código esperar você voltar da tela MeusPontosPage
                 await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => MeusPontosPage()),
