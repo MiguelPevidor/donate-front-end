@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart'; // Certifique-se de ter importado
 import '../components/MyTextField.dart';
+import '../model/Doador.dart'; // Ajuste o import conforme seu projeto
+import '../model/Instituicao.dart'; // Ajuste o import conforme seu projeto
 import '../controllers/CadastrarUsuarioController.dart';
 
-// Enum para tipar a seleção (Boa prática)
+// Enum para os tipos de usuário (Mantido da sua estrutura)
 enum UserType { doador, instituicao }
 
 class CadastroUsuarioPage extends StatefulWidget {
@@ -14,19 +16,22 @@ class CadastroUsuarioPage extends StatefulWidget {
 }
 
 class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
-  // Estado inicial
   UserType _selectedUserType = UserType.doador;
+
   final CadastrarUsuarioController _controller = CadastrarUsuarioController();
 
-  // Controllers de Texto
-  final _nomeCtrl = TextEditingController(); // Nome ou Razão Social
-  final _emailCtrl = TextEditingController();
-  final _senhaCtrl = TextEditingController();
-  final _documentoCtrl = TextEditingController(); // CPF ou CNPJ
-  final _telefoneCtrl = TextEditingController();
-  final _missaoCtrl = TextEditingController(); // Apenas Instituição
+  // Controllers (Mantendo todos separados conforme solicitado)
+  final _loginController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _telefoneController = TextEditingController();
+  final _senhaController = TextEditingController();
+  final _nomeController = TextEditingController();
+  final _cpfController = TextEditingController();
+  final _missaoController = TextEditingController();
+  final _cnpjController = TextEditingController();
+  final _nomeInstituicaoController = TextEditingController();
 
-  // --- MÁSCARAS ---
+  // --- MÁSCARAS (Novidade) ---
   final maskCpf = MaskTextInputFormatter(
       mask: "###.###.###-##", filter: {"#": RegExp(r'[0-9]')});
   final maskCnpj = MaskTextInputFormatter(
@@ -36,36 +41,45 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
 
   @override
   void dispose() {
-    _nomeCtrl.dispose();
-    _emailCtrl.dispose();
-    _senhaCtrl.dispose();
-    _documentoCtrl.dispose();
-    _telefoneCtrl.dispose();
-    _missaoCtrl.dispose();
+    _emailController.dispose();
+    _loginController.dispose();
+    _senhaController.dispose();
+    _telefoneController.dispose();
+    _nomeController.dispose();
+    _cpfController.dispose();
+    _missaoController.dispose();
+    _cnpjController.dispose();
+    _nomeInstituicaoController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Criar Conta')),
+      appBar: _buildAppBar(),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildUserTypeSelector(),
-            const SizedBox(height: 30),
-            _buildFormFields(),
-            const SizedBox(height: 30),
-            _buildRegisterButton(),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildUserTypeSelector(),
+              const SizedBox(height: 30),
+              _buildDynamicFields(),
+              const SizedBox(height: 30),
+              _buildRegisterButton(),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // --- WIDGETS ---
+  // --- MÉTODOS DE CONSTRUÇÃO DE UI ---
+
+  AppBar _buildAppBar() {
+    return AppBar(title: const Text('Cadastrar Novo Usuário'));
+  }
 
   Widget _buildUserTypeSelector() {
     return SegmentedButton<UserType>(
@@ -85,105 +99,129 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
       onSelectionChanged: (Set<UserType> newSelection) {
         setState(() {
           _selectedUserType = newSelection.first;
-          _documentoCtrl.clear(); // Limpa documento ao trocar tipo
         });
       },
     );
   }
 
-  Widget _buildFormFields() {
-    final isInst = _selectedUserType == UserType.instituicao;
+  Widget _buildDynamicFields() {
+    switch (_selectedUserType) {
+      case UserType.doador:
+        return _buildDoadorFields();
+      case UserType.instituicao:
+        return _buildInstituicaoFields();
+    }
+  }
 
+  // Campos comuns (Telefone, Email, Login, Senha)
+  Widget _buildUsuarioFields() {
     return Column(
       children: [
         MyTextField(
-          controller: _nomeCtrl,
-          labelText: isInst ? "Razão Social" : "Nome Completo",
-          obscureText: false,
+          controller: _telefoneController,
+          labelText: 'Telefone',
+          inputFormatters: [maskTel], // Aplica máscara de Telefone
         ),
-        
-        // Campo Documento Dinâmico (CPF/CNPJ)
         MyTextField(
-          controller: _documentoCtrl,
-          labelText: isInst ? "CNPJ" : "CPF",
-          obscureText: false,
-          inputFormatters: [isInst ? maskCnpj : maskCpf],
+          controller: _emailController,
+          labelText: 'Email',
         ),
-
-        // Campo Missão (Apenas se for Instituição)
-        if (isInst)
-          MyTextField(
-            controller: _missaoCtrl,
-            labelText: "Missão da Instituição",
-            obscureText: false,
-          ),
-
         MyTextField(
-          controller: _telefoneCtrl,
-          labelText: "Telefone / Celular",
-          obscureText: false,
-          inputFormatters: [maskTel],
+          controller: _loginController,
+          labelText: "Login", // Campo Login separado
         ),
-
         MyTextField(
-          controller: _emailCtrl,
-          labelText: "E-mail (Login)",
-          obscureText: false,
-        ),
-
-        MyTextField(
-          controller: _senhaCtrl,
-          labelText: "Senha",
+          controller: _senhaController,
           obscureText: true,
+          labelText: 'Senha',
         ),
       ],
     );
   }
 
+  Widget _buildDoadorFields() {
+    return Column(
+      children: [
+        MyTextField(
+          controller: _nomeController,
+          labelText: "Nome Completo",
+        ),
+        MyTextField(
+          controller: _cpfController,
+          labelText: 'CPF',
+          inputFormatters: [maskCpf], // Aplica máscara de CPF
+        ),
+        _buildUsuarioFields()
+      ],
+    );
+  }
+
+  Widget _buildInstituicaoFields() {
+    return Column(
+      children: [
+        MyTextField(
+          controller: _nomeInstituicaoController,
+          labelText: 'Nome da Instituição',
+        ),
+        MyTextField(
+          controller: _missaoController,
+          labelText: 'Missão',
+        ),
+        MyTextField(
+          controller: _cnpjController,
+          labelText: 'CNPJ',
+          inputFormatters: [maskCnpj], // Aplica máscara de CNPJ
+        ),
+        _buildUsuarioFields()
+      ],
+    );
+  }
+
   Widget _buildRegisterButton() {
-    // Usa AnimatedBuilder para reagir ao isLoading do controller
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
+    // Escuta o isLoading para mostrar loading no botão
+    return ValueListenableBuilder<bool>(
+      valueListenable: _controller.isLoading,
+      builder: (context, isLoading, child) {
         return ElevatedButton(
+          onPressed: isLoading ? null : () => _cadastrar(),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue[700],
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
-          onPressed: _controller.isLoading ? null : _cadastrar,
-          child: _controller.isLoading
-              ? const SizedBox(
-                  width: 24, 
-                  height: 24, 
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                )
-              : const Text('Cadastrar', style: TextStyle(fontSize: 18)),
+          child: isLoading 
+            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : const Text('Cadastrar', style: TextStyle(fontSize: 18)),
         );
       }
     );
   }
 
-  void _cadastrar() async {
-    // Validação simples
-    if (_nomeCtrl.text.isEmpty || _emailCtrl.text.isEmpty || _senhaCtrl.text.isEmpty || _documentoCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Preencha todos os campos obrigatórios!")));
-      return;
-    }
+  void _cadastrar() {
+    if (_selectedUserType == UserType.doador) {
+      final doador = Doador(
+        nome: _nomeController.text,
+        cpf: _cpfController.text, // Vai com máscara (Controller limpa)
+        telefone: _telefoneController.text,
+        email: _emailController.text,
+        login: _loginController.text,
+        senha: _senhaController.text,
+      );
+      
+      _controller.cadastrarDoador(context, doador);
 
-    final sucesso = await _controller.cadastrar(
-      context: context,
-      nome: _nomeCtrl.text,
-      email: _emailCtrl.text,
-      senha: _senhaCtrl.text,
-      documento: _documentoCtrl.text,
-      telefone: _telefoneCtrl.text,
-      missao: _missaoCtrl.text, // Pode ser vazio se for doador
-      tipo: _selectedUserType,
-    );
+    } else {
+      final instituicao = Instituicao(
+        nomeInstituicao: _nomeInstituicaoController.text,
+        missao: _missaoController.text,
+        cnpj: _cnpjController.text, // Vai com máscara (Controller limpa)
+        telefone: _telefoneController.text,
+        email: _emailController.text,
+        login: _loginController.text,
+        senha: _senhaController.text,
+      );
 
-    if (sucesso && mounted) {
-       Navigator.pop(context); // Volta para Login
+      _controller.cadastrarInstituicao(context, instituicao);
     }
   }
 }

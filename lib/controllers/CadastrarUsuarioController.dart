@@ -1,101 +1,82 @@
 import 'package:flutter/material.dart';
-import '../services/CadastrarUsuarioService.dart';
-import '../view/CadastroUsuarioPage.dart'; // Importa o Enum UserType
-import '../model/Doador.dart';
-import '../model/Instituicao.dart';
+import '../model/Doador.dart'; // Ajuste o import conforme seu projeto
+import '../model/Instituicao.dart'; // Ajuste o import conforme seu projeto
+import '../services/CadastrarUsuarioService.dart'; // Ajuste o import
 
-class CadastrarUsuarioController extends ChangeNotifier {
+class CadastrarUsuarioController {
   final CadastrarUsuarioService _service = CadastrarUsuarioService();
   
-  bool isLoading = false;
+  // Notifica a tela se está carregando
+  ValueNotifier<bool> isLoading = ValueNotifier<bool>(false);
 
-  Future<bool> cadastrar({
-    required BuildContext context,
-    required String nome,
-    required String email,
-    required String senha,
-    required String documento,
-    required String telefone,
-    required String missao,
-    required UserType tipo,
-  }) async {
-    isLoading = true;
-    notifyListeners();
-
-    // 1. Limpeza das Máscaras (Remove pontos, traços, parênteses)
-    String docLimpo = documento.replaceAll(RegExp(r'[^0-9]'), '');
-    String telLimpo = telefone.replaceAll(RegExp(r'[^0-9]'), '');
-
+  Future<void> cadastrarDoador(BuildContext context, Doador doador) async {
+    isLoading.value = true;
     try {
-      if (tipo == UserType.doador) {
-        // --- CADASTRO DE DOADOR ---
-        if (docLimpo.length != 11) {
-          throw Exception("CPF inválido (tamanho incorreto).");
-        }
+      // LIMPEZA DAS MÁSCARAS (Remove pontuações)
+      String cpfLimpo = doador.cpf.replaceAll(RegExp(r'[^0-9]'), '');
+      String telLimpo = doador.telefone.replaceAll(RegExp(r'[^0-9]'), '');
 
-        Doador novoDoador = Doador(
-          nome: nome,
-          cpf: docLimpo, // Envia limpo
-          telefone: telLimpo,
-          email: email,
-          login: email, // Usando email como login
-          senha: senha,
-        );
+      // Cria um novo objeto com os dados limpos
+      Doador doadorFinal = Doador(
+        id: doador.id,
+        nome: doador.nome,
+        cpf: cpfLimpo,
+        telefone: telLimpo,
+        email: doador.email,
+        login: doador.login,
+        senha: doador.senha,
+      );
 
-        // O Service original usa um Map genérico ou métodos específicos?
-        // Assumindo que você ajustou o Service para métodos tipados 
-        // ou usamos o método genérico 'registrarUsuario' convertendo para JSON.
-        
-        // Opção A: Se o Service espera um Map (conforme arquivos anteriores):
-        /*
-        await _service.registrarUsuario({
-           "nome": nome,
-           "email": email,
-           "senha": senha,
-           "cpf": docLimpo,
-           "telefone": telLimpo,
-           "tipo": "DOADOR"
-        });
-        */
-
-        // Opção B: Se você criou métodos específicos no Service (Recomendado):
-        await _service.cadastrarDoador(novoDoador);
-
-      } else {
-        // --- CADASTRO DE INSTITUIÇÃO ---
-        if (docLimpo.length != 14) {
-          throw Exception("CNPJ inválido (tamanho incorreto).");
-        }
-
-        Instituicao novaInst = Instituicao(
-          nomeInstituicao: nome,
-          cnpj: docLimpo, // Envia limpo
-          missao: missao,
-          telefone: telLimpo,
-          email: email,
-          login: email,
-          senha: senha,
-        );
-
-        await _service.cadastrarInstituicao(novaInst);
-      }
-
-      _mostrarSnack(context, "Cadastro realizado com sucesso!", Colors.green);
-      return true;
-
+      await _service.cadastrarDoador(doadorFinal);
+      _mostrarSucesso(context, "Doador cadastrado com sucesso!");
+      Navigator.pop(context); 
     } catch (e) {
-      print("Erro no cadastro: $e");
-      _mostrarSnack(context, "Erro: ${e.toString().replaceAll('Exception:', '')}", Colors.red);
-      return false;
+      _mostrarErro(context, "Erro ao cadastrar: $e");
     } finally {
-      isLoading = false;
-      notifyListeners();
+      isLoading.value = false;
     }
   }
 
-  void _mostrarSnack(BuildContext context, String msg, Color cor) {
+  Future<void> cadastrarInstituicao(BuildContext context, Instituicao instituicao) async {
+    isLoading.value = true;
+    try {
+      // LIMPEZA DAS MÁSCARAS
+      String cnpjLimpo = instituicao.cnpj.replaceAll(RegExp(r'[^0-9]'), '');
+      String telLimpo = instituicao.telefone.replaceAll(RegExp(r'[^0-9]'), '');
+
+      // Cria um novo objeto com os dados limpos
+      Instituicao instituicaoFinal = Instituicao(
+        id: instituicao.id,
+        nomeInstituicao: instituicao.nomeInstituicao,
+        missao: instituicao.missao,
+        cnpj: cnpjLimpo,
+        telefone: telLimpo,
+        email: instituicao.email,
+        login: instituicao.login,
+        senha: instituicao.senha
+      );
+
+      await _service.cadastrarInstituicao(instituicaoFinal);
+      _mostrarSucesso(context, "Instituição cadastrada com sucesso!");
+      Navigator.pop(context);
+    } catch (e) {
+      _mostrarErro(context, "Erro ao cadastrar: $e");
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  void _mostrarErro(BuildContext context, String msg) {
+    // Remove "Exception:" da mensagem para ficar mais limpo pro usuário
+    String msgLimpa = msg.replaceAll("Exception:", "").trim();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: cor)
+      SnackBar(content: Text(msgLimpa), backgroundColor: Colors.red)
+    );
+  }
+
+  void _mostrarSucesso(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.green)
     );
   }
 }
