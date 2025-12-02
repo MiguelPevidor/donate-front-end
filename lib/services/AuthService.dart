@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:donate/util/ApiResponse.dart';
 import 'package:http/http.dart' as http;
 import 'package:donate/util/Constants.dart';
 
@@ -20,16 +21,21 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
-        // Sucesso: Retorna o JSON (Token, Role, etc)
         return jsonDecode(response.body);
-      } else if (response.statusCode == 401) {
-        throw Exception("Email ou senha incorretos.");
       } else {
-        throw Exception("Erro no servidor. Tente novamente.");
+        // Tenta pegar a mensagem do backend (ex: "Credenciais inválidas")
+        // Se falhar (ex: 401 padrão do Spring sem JSON), usamos uma mensagem padrão.
+        String msgBackend = ApiResponse.tratarErro(response);
+        
+        // Se o helper retornou erro genérico de parsing mas é 401, forçamos a msg
+        if (response.statusCode == 401 && msgBackend.contains("Erro de comunicação")) {
+           throw Exception("Login ou senha incorretos.");
+        }
+
+        throw Exception(msgBackend);
       }
     } catch (e) {
-      print(e.toString());
-      rethrow; // Passa o erro para o Controller tratar
+      rethrow;
     }
   }
 
@@ -41,7 +47,7 @@ class AuthService {
       url,
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer $token", // Envia o token para autenticação
+        "Authorization": "Bearer $token", 
       },
     );
 

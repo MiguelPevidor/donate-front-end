@@ -1,11 +1,9 @@
 import 'dart:convert';
 import 'package:donate/model/Doador.dart';
 import 'package:donate/model/Instituicao.dart';
+import 'package:donate/util/ApiResponse.dart';
 import 'package:http/http.dart' as http;
-
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../util/Constants.dart'; // Sua classe de constantes com a baseUrl
+import '../util/Constants.dart';
 
 class CadastrarUsuarioService {
   
@@ -16,23 +14,20 @@ class CadastrarUsuarioService {
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode(doador.toJson()), // Converte o objeto para JSON
+        body: jsonEncode(doador.toJson()),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Sucesso
         return;
       } else {
-        // Trate erros do backend (ex: email já existe)
-        throw Exception("Falha ao cadastrar doador: ${response.body}");
+        String mensagemErro = ApiResponse.tratarErro(response);
+        throw Exception(mensagemErro);
       }
     } catch (e) {
-      print(e.toString());
       rethrow;
     }
   }
 
-  // Endpoint para salvar instituição
   Future<void> cadastrarInstituicao(Instituicao instituicao) async {
     final url = Uri.parse('${Constants.baseUrl}/instituicoes/salvarInstituicao');
     
@@ -46,10 +41,10 @@ class CadastrarUsuarioService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         return;
       } else {
-        throw Exception("Falha ao cadastrar instituição: ${response.body}");
+        String mensagemErro = ApiResponse.tratarErro(response);
+        throw Exception(mensagemErro);
       }
     } catch (e) {
-      print(e.toString());
       rethrow;
     }
   }
