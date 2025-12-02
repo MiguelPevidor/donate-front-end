@@ -1,28 +1,26 @@
-import 'package:donate/components/MyTextField.dart';
-import 'package:donate/model/Doador.dart';
-import 'package:donate/model/Instituicao.dart';
 import 'package:flutter/material.dart';
-import 'package:donate/controllers/CadastrarUsuarioController.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart'; // Certifique-se de ter importado
+import '../components/MyTextField.dart';
+import '../model/Doador.dart'; // Ajuste o import conforme seu projeto
+import '../model/Instituicao.dart'; // Ajuste o import conforme seu projeto
+import '../controllers/CadastrarUsuarioController.dart';
 
-// 1. (Opcional, mas recomendado) Crie um enum para os tipos de usuário.
-// É mais seguro e limpo do que usar Strings.
+// Enum para os tipos de usuário (Mantido da sua estrutura)
 enum UserType { doador, instituicao }
 
 class CadastroUsuarioPage extends StatefulWidget {
-  const CadastroUsuarioPage({super.key});
+  const CadastroUsuarioPage({Key? key}) : super(key: key);
 
   @override
   State<CadastroUsuarioPage> createState() => _CadastroUsuarioPageState();
 }
 
 class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
-  // Variável de estado para "lembrar" a seleção atual.
   UserType _selectedUserType = UserType.doador;
 
-  // Instância do controller de cadastro
   final CadastrarUsuarioController _controller = CadastrarUsuarioController();
 
-  // Controladores para os campos de texto
+  // Controllers (Mantendo todos separados conforme solicitado)
   final _loginController = TextEditingController();
   final _emailController = TextEditingController();
   final _telefoneController = TextEditingController();
@@ -32,6 +30,14 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
   final _missaoController = TextEditingController();
   final _cnpjController = TextEditingController();
   final _nomeInstituicaoController = TextEditingController();
+
+  // --- MÁSCARAS (Novidade) ---
+  final maskCpf = MaskTextInputFormatter(
+      mask: "###.###.###-##", filter: {"#": RegExp(r'[0-9]')});
+  final maskCnpj = MaskTextInputFormatter(
+      mask: "##.###.###/####-##", filter: {"#": RegExp(r'[0-9]')});
+  final maskTel = MaskTextInputFormatter(
+      mask: "(##) #####-####", filter: {"#": RegExp(r'[0-9]')});
 
   @override
   void dispose() {
@@ -50,18 +56,18 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _buildAppBar(), // Método para construir a AppBar
+      appBar: _buildAppBar(),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildUserTypeSelector(), // Método para o SegmentedButton
+              _buildUserTypeSelector(),
               const SizedBox(height: 30),
-              _buildDynamicFields(), // Método para os campos dinâmicos
+              _buildDynamicFields(),
               const SizedBox(height: 30),
-              _buildRegisterButton(), // Método para o botão de cadastro
+              _buildRegisterButton(),
             ],
           ),
         ),
@@ -71,14 +77,10 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
 
   // --- MÉTODOS DE CONSTRUÇÃO DE UI ---
 
-  /// Constrói a AppBar da página de cadastro.
   AppBar _buildAppBar() {
-    return AppBar(
-      title: const Text('Cadastrar Novo Usuário')
-    );
+    return AppBar(title: const Text('Cadastrar Novo Usuário'));
   }
 
-  /// Constrói o SegmentedButton para selecionar o tipo de usuário Doador/Instituição.
   Widget _buildUserTypeSelector() {
     return SegmentedButton<UserType>(
       segments: const [
@@ -102,8 +104,6 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
     );
   }
 
-  /// Constrói os campos de formulário que mudam dinamicamente
-  /// com base no tipo de usuário selecionado.
   Widget _buildDynamicFields() {
     switch (_selectedUserType) {
       case UserType.doador:
@@ -113,32 +113,32 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
     }
   }
 
+  // Campos comuns (Telefone, Email, Login, Senha)
   Widget _buildUsuarioFields() {
     return Column(
       children: [
         MyTextField(
           controller: _telefoneController,
           labelText: 'Telefone',
+          inputFormatters: [maskTel], // Aplica máscara de Telefone
         ),
         MyTextField(
           controller: _emailController,
           labelText: 'Email',
         ),
         MyTextField(
-            controller: _loginController,
-            labelText: "login"
+          controller: _loginController,
+          labelText: "Login", // Campo Login separado
         ),
         MyTextField(
           controller: _senhaController,
           obscureText: true,
           labelText: 'Senha',
         ),
-      ]
+      ],
     );
   }
 
-
-  /// Constrói os campos de texto específicos para um Doador.
   Widget _buildDoadorFields() {
     return Column(
       children: [
@@ -149,13 +149,13 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
         MyTextField(
           controller: _cpfController,
           labelText: 'CPF',
+          inputFormatters: [maskCpf], // Aplica máscara de CPF
         ),
         _buildUsuarioFields()
       ],
     );
   }
 
-  /// Constrói os campos de texto específicos para uma Instituição.
   Widget _buildInstituicaoFields() {
     return Column(
       children: [
@@ -170,58 +170,57 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
         MyTextField(
           controller: _cnpjController,
           labelText: 'CNPJ',
+          inputFormatters: [maskCnpj], // Aplica máscara de CNPJ
         ),
         _buildUsuarioFields()
       ],
     );
   }
 
-  /// Constrói o botão "Cadastrar".
   Widget _buildRegisterButton() {
-    return ElevatedButton(
-      onPressed: () {
-        _cadastrar();
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue[700],
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-      ),
-      child: const Text(
-        'Cadastrar',
-        style: TextStyle(fontSize: 18),
-      ),
+    // Escuta o isLoading para mostrar loading no botão
+    return ValueListenableBuilder<bool>(
+      valueListenable: _controller.isLoading,
+      builder: (context, isLoading, child) {
+        return ElevatedButton(
+          onPressed: isLoading ? null : () => _cadastrar(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue[700],
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+          child: isLoading 
+            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : const Text('Cadastrar', style: TextStyle(fontSize: 18)),
+        );
+      }
     );
   }
 
   void _cadastrar() {
     if (_selectedUserType == UserType.doador) {
-      // 1. Cria o objeto Doador com os dados dos controllers
       final doador = Doador(
         nome: _nomeController.text,
-        cpf: _cpfController.text,
+        cpf: _cpfController.text, // Vai com máscara (Controller limpa)
         telefone: _telefoneController.text,
         email: _emailController.text,
         login: _loginController.text,
         senha: _senhaController.text,
       );
       
-      // 2. Chama o controller passando o objeto
       _controller.cadastrarDoador(context, doador);
 
     } else {
-      // 1. Cria o objeto Instituição
       final instituicao = Instituicao(
         nomeInstituicao: _nomeInstituicaoController.text,
         missao: _missaoController.text,
-        cnpj: _cnpjController.text,
+        cnpj: _cnpjController.text, // Vai com máscara (Controller limpa)
         telefone: _telefoneController.text,
         email: _emailController.text,
         login: _loginController.text,
         senha: _senhaController.text,
       );
 
-      // 2. Chama o controller
       _controller.cadastrarInstituicao(context, instituicao);
     }
   }
