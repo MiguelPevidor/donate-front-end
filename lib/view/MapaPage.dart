@@ -24,7 +24,6 @@ class _MapaPageState extends State<MapaPage> {
   late MapaController _controle;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   
-  final TextEditingController _searchController = TextEditingController();
   final DraggableScrollableController _sheetController = DraggableScrollableController();
 
   late Future<void> _futureInicializacao;
@@ -249,14 +248,12 @@ class _MapaPageState extends State<MapaPage> {
                       )
                     else
                       MapaPesquisaSheet(
-                        searchController: _searchController,
                         tiposItens: _controle.tiposItens,
                         idsSelecionados: _idsSelecionados,
                         pontosEncontrados: _controle.pontos,
                         isLoading: _isLoadingFiltro,
                         onFiltroChanged: _filtrar,
                         onPontoSelected: _onPontoSelectedNaLista,
-                        onSearchTap: () => _sheetController.animateTo(0.5, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
                       ),
                     const SizedBox(height: 20),
                   ],

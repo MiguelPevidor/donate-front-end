@@ -79,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
                     obscureText: true,
                 ),
 
-                _buildOptionsRow(),
+                // _buildOptionsRow(),
                 _buildLoginButton(),
                 _buildSignUpLink(),
               ],
@@ -109,29 +109,29 @@ class _LoginPageState extends State<LoginPage> {
   }
 
 
-  /// Constrói a linha com "Manter conectado" e "Esqueceu sua senha?"
-  Widget _buildOptionsRow() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Checkbox(value: true, onChanged: (val) {}),
-                const Text("Manter conectado"),
-              ],
-            ),
-            TextButton(
-              onPressed: () {},
-              child: const Text("Esqueceu sua senha?"),
-            ),
-          ],
-        ),
-        const SizedBox(height: 30),
-      ],
-    );
-  }
+  // /// Constrói a linha com "Manter conectado" e "Esqueceu sua senha?"
+  // Widget _buildOptionsRow() {
+  //   return Column(
+  //     children: [
+  //       Row(
+  //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //         children: [
+  //           Row(
+  //             children: [
+  //               Checkbox(value: true, onChanged: (val) {}),
+  //               const Text("Manter conectado"),
+  //             ],
+  //           ),
+  //           TextButton(
+  //             onPressed: () {},
+  //             child: const Text("Esqueceu sua senha?"),
+  //           ),
+  //         ],
+  //       ),
+  //       const SizedBox(height: 30),
+  //     ],
+  //   );
+  // }
 
   /// Constrói o botão principal de login
   Widget _buildLoginButton() {
