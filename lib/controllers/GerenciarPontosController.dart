@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http; // Importação adicionada
+import 'dart:convert'; // Importação adicionada
 
 import '../services/PontoColetaService.dart';
-import '../services/MapaService.dart'; // IMPORTANTE: Importar o MapaService
+import '../services/MapaService.dart';
 import '../model/PontoDeColeta.dart';
 import '../model/Item.dart';
 import '../model/Endereco.dart';
@@ -12,7 +14,7 @@ import '../util/localizador.dart';
 
 class GerenciarPontosController extends ChangeNotifier {
   final PontoColetaService _service = PontoColetaService();
-  final MapaService _mapaService = MapaService(); // Instancia o MapaService
+  final MapaService _mapaService = MapaService();
   final _storage = const FlutterSecureStorage();
 
   List<PontoDeColeta> meusPontos = [];
@@ -29,7 +31,6 @@ class GerenciarPontosController extends ChangeNotifier {
         Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
         instituicaoId = decodedToken['id'] ?? decodedToken['userId'] ?? decodedToken['sub'];
         
-        // Regra: Mostrar apenas pontos da instituição logada
         if (instituicaoId != null) {
           meusPontos = await _service.listarPorInstituicao(instituicaoId!);
         }
@@ -42,10 +43,8 @@ class GerenciarPontosController extends ChangeNotifier {
     }
   }
 
-  // Carrega itens usando o método do MapaService que você pediu
   Future<void> carregarItens() async {
     try {
-      // Usa o método existente no MapaService
       todosItens = await _mapaService.buscarItens();
       notifyListeners();
     } catch (e) {
@@ -53,9 +52,42 @@ class GerenciarPontosController extends ChangeNotifier {
     }
   }
 
+  // --- NOVO MÉTODO: BUSCAR CEP ---
+  Future<Map<String, dynamic>?> buscarCep(String cep) async {
+    // Remove caracteres não numéricos
+    String cepLimpo = cep.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (cepLimpo.length != 8) {
+      return null;
+    }
+
+    isLoading = true;
+    notifyListeners();
+
+    try {
+      final url = Uri.parse('https://viacep.com.br/ws/$cepLimpo/json/');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        Map<String, dynamic> dados = jsonDecode(response.body);
+        if (dados.containsKey('erro')) {
+          return null;
+        }
+        return dados;
+      }
+    } catch (e) {
+      print("Erro ao buscar CEP: $e");
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+    return null;
+  }
+  // -------------------------------
+
   Future<bool> salvarPonto({
     String? id,
-    required String nome, // Novo parâmetro
+    required String nome,
     required String horario,
     required Endereco enderecoDados,
     required List<String> itensSelecionadosIds,
@@ -87,11 +119,9 @@ class GerenciarPontosController extends ChangeNotifier {
         longitude: coords?.longitude ?? 0.0,
       );
 
-      // 2. Monta o JSON atualizado
       final requestBody = {
         'nome': nome,
         'horarioFuncionamento': horario,
-        // 'capacidadeMaxima': removido
         'instituicaoId': instituicaoId,
         'endereco': enderecoFinal.toJson(),
         'itensIds': itensSelecionadosIds
