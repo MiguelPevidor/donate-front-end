@@ -1,45 +1,101 @@
-import 'package:donate/model/Doador.dart';
-import 'package:donate/model/Instituicao.dart';
 import 'package:flutter/material.dart';
-import 'package:donate/services/CadastrarUsuarioService.dart';
+import '../services/CadastrarUsuarioService.dart';
+import '../view/CadastroUsuarioPage.dart'; // Importa o Enum UserType
+import '../model/Doador.dart';
+import '../model/Instituicao.dart';
 
-class CadastrarUsuarioController {
+class CadastrarUsuarioController extends ChangeNotifier {
   final CadastrarUsuarioService _service = CadastrarUsuarioService();
   
-  // Notifica a tela se está carregando
-  ValueNotifier<bool> isLoading = ValueNotifier<bool>(false);
+  bool isLoading = false;
 
-  Future<void> cadastrarDoador(BuildContext context, Doador doador) async {
-    isLoading.value = true;
+  Future<bool> cadastrar({
+    required BuildContext context,
+    required String nome,
+    required String email,
+    required String senha,
+    required String documento,
+    required String telefone,
+    required String missao,
+    required UserType tipo,
+  }) async {
+    isLoading = true;
+    notifyListeners();
+
+    // 1. Limpeza das Máscaras (Remove pontos, traços, parênteses)
+    String docLimpo = documento.replaceAll(RegExp(r'[^0-9]'), '');
+    String telLimpo = telefone.replaceAll(RegExp(r'[^0-9]'), '');
+
     try {
-      await _service.cadastrarDoador(doador);
-      _mostrarSucesso(context, "Doador cadastrado com sucesso!");
-      Navigator.pop(context); // Volta para o login após cadastro
+      if (tipo == UserType.doador) {
+        // --- CADASTRO DE DOADOR ---
+        if (docLimpo.length != 11) {
+          throw Exception("CPF inválido (tamanho incorreto).");
+        }
+
+        Doador novoDoador = Doador(
+          nome: nome,
+          cpf: docLimpo, // Envia limpo
+          telefone: telLimpo,
+          email: email,
+          login: email, // Usando email como login
+          senha: senha,
+        );
+
+        // O Service original usa um Map genérico ou métodos específicos?
+        // Assumindo que você ajustou o Service para métodos tipados 
+        // ou usamos o método genérico 'registrarUsuario' convertendo para JSON.
+        
+        // Opção A: Se o Service espera um Map (conforme arquivos anteriores):
+        /*
+        await _service.registrarUsuario({
+           "nome": nome,
+           "email": email,
+           "senha": senha,
+           "cpf": docLimpo,
+           "telefone": telLimpo,
+           "tipo": "DOADOR"
+        });
+        */
+
+        // Opção B: Se você criou métodos específicos no Service (Recomendado):
+        await _service.cadastrarDoador(novoDoador);
+
+      } else {
+        // --- CADASTRO DE INSTITUIÇÃO ---
+        if (docLimpo.length != 14) {
+          throw Exception("CNPJ inválido (tamanho incorreto).");
+        }
+
+        Instituicao novaInst = Instituicao(
+          nomeInstituicao: nome,
+          cnpj: docLimpo, // Envia limpo
+          missao: missao,
+          telefone: telLimpo,
+          email: email,
+          login: email,
+          senha: senha,
+        );
+
+        await _service.cadastrarInstituicao(novaInst);
+      }
+
+      _mostrarSnack(context, "Cadastro realizado com sucesso!", Colors.green);
+      return true;
+
     } catch (e) {
-      _mostrarErro(context, e.toString());
+      print("Erro no cadastro: $e");
+      _mostrarSnack(context, "Erro: ${e.toString().replaceAll('Exception:', '')}", Colors.red);
+      return false;
     } finally {
-      isLoading.value = false;
+      isLoading = false;
+      notifyListeners();
     }
   }
 
-  Future<void> cadastrarInstituicao(BuildContext context, Instituicao instituicao) async {
-    isLoading.value = true;
-    try {
-      await _service.cadastrarInstituicao(instituicao);
-      _mostrarSucesso(context, "Instituição cadastrada com sucesso!");
-      Navigator.pop(context);
-    } catch (e) {
-      _mostrarErro(context, e.toString());
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  void _mostrarErro(BuildContext context, String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
-  }
-
-  void _mostrarSucesso(BuildContext context, String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
+  void _mostrarSnack(BuildContext context, String msg, Color cor) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: cor)
+    );
   }
 }

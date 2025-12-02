@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 
 
@@ -15,6 +16,8 @@ class MyTextField extends StatelessWidget {
 
   // O espaçamento inferior
   final double bottomSpacing;
+  final FocusNode? focusNode;
+  final List<TextInputFormatter>? inputFormatters;
 
   const MyTextField({
     super.key,
@@ -22,6 +25,8 @@ class MyTextField extends StatelessWidget {
     required this.labelText,
     this.obscureText = false, 
     this.bottomSpacing = 20.0, 
+    this.focusNode,
+    this.inputFormatters,
   });
 
   @override
@@ -31,6 +36,8 @@ class MyTextField extends StatelessWidget {
         TextFormField(
           controller: controller,
           obscureText: obscureText,
+          focusNode: focusNode,
+          inputFormatters: inputFormatters,
           decoration: InputDecoration(
             labelText: labelText,
             // Estilos de borda (é uma boa prática definir enabledBorder e focusedBorder)
